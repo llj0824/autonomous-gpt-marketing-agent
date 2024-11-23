@@ -89,3 +89,23 @@ START
 ### Checkpoint 2: Highlight Analysis
 - Scores highlight-worthiness using GPT-4.
 - Produces a ranked list of top segments with engagement scores and timestamps.
+
+## Development Tools
+
+
+### Running the API
+
+To run the FastAPI application locally, use the following command:
+```bash
+uvicorn main:app --reload
+```
+This will start the server at `http://127.0.0.1:8000`, and the `--reload` option will auto-reload the server when code changes are detected.
+
+
+### 7. Testing the API Endpoint
+
+You can test the API endpoint by visiting the URL in your browser or using `curl` or any HTTP client:
+
+```bash
+curl http://localhost:8000/process_video/YOUR_VIDEO_ID_HERE
+```

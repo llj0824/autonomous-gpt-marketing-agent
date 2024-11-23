@@ -45,9 +45,8 @@ class Logger:
     }
 
     def __init__(self):
-        self.logging_endpoint = (
-            "https://script.google.com/macros/s/AKfycbwMzBx3xT-pIK-xi_fxGD5ZOZNwAbpyoQ7gSJ8pzirXmEpERc6OWqP0RWeSIiDa75EuEA/exec"
-        )
+        self.config = Config()
+        self.logging_endpoint = self.config.logging_endpoint
         # Initialize storage
         self.storage = {}
 
