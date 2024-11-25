@@ -91,7 +91,29 @@ START
 - Produces a ranked list of top segments with engagement scores and timestamps.
 
 ## Development Tools
+### Setting Up the Development Environment
 
+**Create a Virtual Environment**:
+Create a virtual environment to isolate dependencies.
+```bash
+python -m venv venv
+```
+
+**Activate the Virtual Environment**:
+- On **Windows**:
+  ```bash
+  venv\Scripts\activate
+  ```
+- On **macOS/Linux**:
+  ```bash
+  source venv/bin/activate
+  ```
+
+**Install Dependencies**:
+Install the required Python packages using the `requirements.txt` file.
+```bash
+pip install -r requirements.txt
+```
 
 ### Running the API
 
@@ -109,3 +131,13 @@ You can test the API endpoint by visiting the URL in your browser or using `curl
 ```bash
 curl http://localhost:8000/process_video/YOUR_VIDEO_ID_HERE
 ```
+
+## TODO
+
+-> Error: File "/Users/leojiang/Desktop/workspace/autonomous-gpt-marketing-agent/main.py", line 2, in <module>
+    from highlight_analyzer import HighlightAnalyzer
+ModuleNotFoundError: No module named 'highlight_analyze
+
+-> Verify logging works
+
+-> verify endpoint works

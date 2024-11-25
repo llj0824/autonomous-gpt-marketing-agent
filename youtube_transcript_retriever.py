@@ -13,26 +13,6 @@ class YoutubeTranscriptRetriever:
         self.channel_name = None
         self.transcript_text = None
 
-    async def get_video_metadata(self, video_id):
-        """
-        Get video metadata for a YouTube video.
-
-        Args:
-            video_id (str): YouTube video ID.
-        Returns:
-            dict: Video metadata including title and channel name.
-        """
-        self.video_id = video_id
-
-        # Fetch video metadata
-        await self._fetch_video_metadata()
-
-        return {
-            "video_title": self.video_title,
-            "channel_name": self.channel_name,
-            "video_id": self.video_id,
-        }
-
     async def get_transcript(self, video_id):
         """
         Get transcript for a YouTube video
@@ -46,9 +26,6 @@ class YoutubeTranscriptRetriever:
         # Note: In Python we'd use a library like youtube_transcript_api
         # This is a simplified version
         try:
-            # Get video metadata
-            await self._fetch_video_metadata()
-
             # Get raw transcript
             raw_transcript = await self._fetch_transcript()
 
@@ -59,13 +36,6 @@ class YoutubeTranscriptRetriever:
 
         except Exception as e:
             raise Exception(f"Failed to get transcript: {str(e)}")
-
-    async def _fetch_video_metadata(self):
-        """Fetch video title and channel name using YouTube Data API."""
-        # Implementation should use the YouTube Data API to fetch metadata.
-        # For demonstration, using placeholder values.
-        self.video_title = "Sample Video Title"
-        self.channel_name = "Sample Channel Name"
 
     async def _fetch_transcript(self):
         """Fetch raw transcript from YouTube."""
