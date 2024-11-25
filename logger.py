@@ -1,10 +1,11 @@
 # logger.py
 import json
 from datetime import datetime
-import aiohttp
-import asyncio
-from typing import Dict, Any, List
-import logging
+import csv
+import os
+from pathlib import Path
+from config import Config
+from typing import Dict, Any
 
 class Logger:
     EVENTS = {
@@ -44,93 +45,52 @@ class Logger:
         'SUCCESS': 'success'
     }
 
+    LOG_FILE_PATH = Path('logging.csv')
+    CSV_HEADERS = ['timestamp', 'event', 'data']
+
     def __init__(self):
         self.config = Config()
-        self.logging_endpoint = self.config.logging_endpoint
-        # Initialize storage
-        self.storage = {}
+        
+        # Create CSV file with headers if it doesn't exist
+        if not self.LOG_FILE_PATH.exists():
+            with open(self.LOG_FILE_PATH, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(self.CSV_HEADERS)
 
-    async def log_event(self, event_name: str, data: Dict[str, Any] = None) -> None:
+    def log_event(self, event_name: str, data: Dict[str, Any] = None) -> None:
         """
-        Log an event to the remote endpoint and handle failures
+        Log an event to a CSV file
         """
         if data is None:
             data = {}
 
-        log_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'event': event_name,
-            'data': data
-        }
-
+        log_entry = [
+            datetime.now().isoformat(),
+            event_name,
+            json.dumps(data)  # Convert dict to JSON string for CSV storage
+        ]
+        
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.logging_endpoint,
-                    headers={'Content-Type': 'application/json'},
-                    json=log_entry
-                ) as response:
-                    # Note: We're not checking response status due to no-cors mode
-                    pass
+            with open(self.LOG_FILE_PATH, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(log_entry)
+            print(f"Logged event to file: {event_name}")
+            
         except Exception as error:
-            print(f'Logging error: {error}')
-            await self._store_log_locally(log_entry)
+            print(f'Logging error: {str(error)}')
+            print(f'Error type: {type(error).__name__}')
 
-    async def _store_log_locally(self, log_entry: Dict[str, Any]) -> None:
-        """
-        Store failed logs locally
-        """
-        failed_logs = self.storage.get('failed_logs', [])
-        failed_logs.append(log_entry)
-        
-        # Keep only the last 1000 failed logs
-        if len(failed_logs) > 1000:
-            failed_logs.pop(0)
-        
-        self.storage['failed_logs'] = failed_logs
-
-    async def retry_failed_logs(self) -> int:
-        """
-        Retry sending failed logs to the endpoint
-        Returns the number of successful retries
-        """
-        failed_logs = self.storage.get('failed_logs', [])
-        successful_retries = []
-
-        async with aiohttp.ClientSession() as session:
-            for log_entry in failed_logs:
-                try:
-                    async with session.post(
-                        self.logging_endpoint,
-                        headers={'Content-Type': 'application/json'},
-                        json=log_entry
-                    ) as response:
-                        successful_retries.append(log_entry)
-                except Exception as error:
-                    print(f'Failed to retry log: {error}')
-
-        # Remove successful retries from failed logs
-        remaining_logs = [log for log in failed_logs if log not in successful_retries]
-        self.storage['failed_logs'] = remaining_logs
-
-        return len(successful_retries)
-
-# Example usage
-async def main():
+# Example usage can be simplified to:
+def main():
     logger = Logger()
     
-    # Log an event
-    await logger.log_event(
+    # Log an event (no await needed)
+    logger.log_event(
         Logger.EVENTS['TRANSCRIPT_RETRIEVAL_ATTEMPT'],
         {
-            Logger.FIELDS['VIDEO_ID']: 'abc123',
-            Logger.FIELDS['TRANSCRIPT_LENGTH']: 1000
+            Logger.FIELDS['VIDEO_ID']: 'testing',
         }
-    )
-    
-    # Retry failed logs
-    successful_retries = await logger.retry_failed_logs()
-    print(f"Successfully retried {successful_retries} logs")
+    )    
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()  # Remove asyncio.run()
