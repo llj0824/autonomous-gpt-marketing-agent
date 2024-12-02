@@ -24,6 +24,7 @@ import {
   TextField
 } from '@mui/material';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const [channels, setChannels] = useState([]);

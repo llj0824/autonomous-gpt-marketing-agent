@@ -11,27 +11,49 @@
  * for navigation between different views.
  */
 
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline, AppBar, Toolbar, Typography, Box } from '@mui/material';
+import Dashboard from './Dashboard';
+import HighlightReview from './HighlightReview';
+
+// Create a theme instance
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <BrowserRouter>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          <AppBar position="static">
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                Highlight Review System
+              </Typography>
+            </Toolbar>
+          </AppBar>
+
+          <Box component="main" sx={{ flexGrow: 1, py: 3 }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/review/:videoId" element={<HighlightReview />} />
+            </Routes>
+          </Box>
+        </Box>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
