@@ -1,0 +1,22 @@
+# FastAPI and server dependencies
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
+# YouTube API and transcript handling
+youtube-transcript-api>=0.6.1
+google-api-python-client>=2.108.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+
+# Async support
+aiohttp>=3.9.0
+asyncio>=3.4.3
+
+# Utility packages
+python-dotenv>=1.0.0
+pydantic>=2.4.2
