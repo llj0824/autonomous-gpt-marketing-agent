@@ -68,7 +68,7 @@ const HighlightReview = () => {
 
   const fetchVideoData = async () => {
     try {
-      const response = await axios.get(`/api/videos/${videoId}`);
+      const response = await axios.get(`/videos/${videoId}`);
       setVideo(response.data);
     } catch (error) {
       console.error('Error fetching video:', error);
@@ -77,7 +77,7 @@ const HighlightReview = () => {
 
   const fetchHighlights = async () => {
     try {
-      const response = await axios.get(`/api/videos/${videoId}/highlights`);
+      const response = await axios.get(`/videos/${videoId}/highlights`);
       setHighlights(response.data);
       setHighlight(response.data[0]);
     } catch (error) {
@@ -87,7 +87,7 @@ const HighlightReview = () => {
 
   const handleApprove = async () => {
     try {
-      await axios.put(`/api/highlights/${highlight.id}`, {
+      await axios.put(`/highlights/${highlight.id}`, {
         ...highlight,
         status: 'approved'
       });
@@ -99,7 +99,7 @@ const HighlightReview = () => {
 
   const handleReject = async () => {
     try {
-      await axios.put(`/api/highlights/${highlight.id}`, {
+      await axios.put(`/highlights/${highlight.id}`, {
         ...highlight,
         status: 'rejected'
       });

@@ -17,10 +17,20 @@ from typing import List
 from . import models, schemas, crud
 from .init_database import SessionLocal, engine
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Highlight Review Application")
+
+# If our frontend and backend are running on different origins, we need to enable CORS in the backend:
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to specify allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()

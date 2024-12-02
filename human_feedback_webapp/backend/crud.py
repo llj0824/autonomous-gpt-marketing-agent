@@ -62,3 +62,6 @@ def update_highlight(db: Session, highlight_id: str, highlight: schemas.Highligh
     db.commit()
     db.refresh(db_highlight)
     return db_highlight
+
+def get_all_videos(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Video).offset(skip).limit(limit).all()

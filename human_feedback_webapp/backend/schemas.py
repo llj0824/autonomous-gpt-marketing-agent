@@ -24,6 +24,7 @@ class ChannelCreate(ChannelBase):
 class Channel(ChannelBase):
     id: str
     last_checked: datetime
+    videos: List[Video] = []
 
     class Config:
         from_attributes = True
@@ -41,26 +42,36 @@ class Video(VideoBase):
     id: str
     channel_id: str
     processed_at: datetime
+    highlights: List[Highlight] = []
 
     class Config:
         from_attributes = True
 
 # Highlight Schemas
 class HighlightBase(BaseModel):
+    id: str
+    video_id: str
     time_start: int
     time_end: int
-    topic: str
-    quote: str
-    insight: str
-    takeaway: str
-    context: str
+    topic: Optional[str]
+    quote: Optional[str]
+    insight: Optional[str]
+    takeaway: Optional[str]
+    context: Optional[str]
+    status: Optional[str]
+    comments: Optional[str]
 
 class HighlightCreate(HighlightBase):
     video_id: str
 
 class HighlightUpdate(BaseModel):
-    status: str
-    comments: Optional[str] = None
+    topic: Optional[str]
+    quote: Optional[str]
+    insight: Optional[str]
+    takeaway: Optional[str]
+    context: Optional[str]
+    status: Optional[str]
+    comments: Optional[str]
 
 class Highlight(HighlightBase):
     id: str
@@ -70,4 +81,4 @@ class Highlight(HighlightBase):
     reviewed_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
