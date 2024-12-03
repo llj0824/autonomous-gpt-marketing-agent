@@ -56,6 +56,7 @@ const Dashboard = () => {
   const fetchVideos = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos`);
+      console.log('Fetched Videos response:', response.data);
       setVideos(response.data);
     } catch (error) {
       console.error('Error fetching videos:', error);
@@ -157,13 +158,24 @@ const Dashboard = () => {
                   button
                   component={Link}
                   to={`/review/${video.id}`}
+                  sx={{ display: 'flex', gap: 2 }}
                 >
+                  <img 
+                    src={video.thumbnail_url} 
+                    alt={video.title}
+                    style={{
+                      width: '120px',
+                      height: '67px',
+                      objectFit: 'cover',
+                      borderRadius: '4px'
+                    }}
+                  />
                   <ListItemText
                     primary={video.title}
                     secondary={
                       <>
                         <Typography component="span" display="block">
-                          {`Channel: ${video.channel.name} • Duration: ${formatDuration(video.duration)}`}
+                          {`Channel: ${video.channel_id || 'Unknown'} • Duration: ${formatDuration(video.duration)}`}
                         </Typography>
                         <Typography component="span" display="block">
                           {`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
