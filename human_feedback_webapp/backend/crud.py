@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas
 from datetime import datetime
+from .youtube_service import YoutubeService
+
+# Create a module-level instance of YoutubeService
+youtube_service = YoutubeService()
 
 # Channel operations
 def get_channel(db: Session, channel_id: str):
@@ -22,14 +26,61 @@ def get_channel(db: Session, channel_id: str):
 def get_channels(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Channel).offset(skip).limit(limit).all()
 
-def create_channel(db: Session, channel: schemas.ChannelCreate):
-    db_channel = models.Channel(**channel.dict())
-    db.add(db_channel)
-    db.commit()
-    db.refresh(db_channel)
-    return db_channel
+async def create_or_update_channel(db: Session, channel_handle: str):
+    """
+    Creates or updates a channel and its videos by fetching data from YouTube.
+    
+    Args:
+        db: Database session
+        channel_handle: YouTube channel handle (e.g. "@Bankless")
+    """
+    try:
+        # Fetch data from YouTube
+        channel_data = await YoutubeService.fetch_channel_data(channel_handle)
+        
+        # Create/update channel
+        db_channel = models.Channel(
+            id=channel_handle,
+            name=channel_data['metadata']['title'],
+            url=f"https://www.youtube.com/{channel_handle}"
+        )
+        db.merge(db_channel)
+        
+        # Create/update videos
+        for video in channel_data['videos']:
+            duration = parse_duration(video.get('duration', '0:00'))
+            db_video = models.Video(
+                id=video['videoId'],
+                channel_id=channel_handle,
+                title=video['title'],
+                duration=duration,
+                url=video['url'],
+                thumbnail_url=video['thumbnailUrl']
+            )
+            db.merge(db_video)
+            
+        db.commit()
+        return db_channel
+        
+    except Exception as e:
+        db.rollback()
+        raise Exception(f"Failed to create/update channel: {str(e)}")
 
 # Video operations
+def create_or_update_videos(db: Session, videos_data: list, channel_id: str):
+    for video in videos_data:
+        duration = parse_duration(video.get('duration', '0:00'))
+        db_video = models.Video(
+            id=video['videoId'],
+            channel_id=channel_id,
+            title=video['title'],
+            duration=duration,
+            url=video['url'],
+            thumbnail_url=video['thumbnailUrl']
+        )
+        db.merge(db_video)
+    db.commit()
+
 def get_video(db: Session, video_id: str):
     return db.query(models.Video).filter(models.Video.id == video_id).first()
 
@@ -39,6 +90,29 @@ def create_video(db: Session, video_metadata: dict):
     db.commit()
     db.refresh(db_video)
     return db_video
+
+# Hydration function
+async def hydrate_channel_and_videos(db: Session, channel_handle: str):
+    """
+    Fetches channel and video data using YoutubeTranscriptRetriever and stores them.
+    """
+    # Fetch data from YouTube
+    channel_data = await youtube_service.fetch_channel_data(channel_handle)
+
+    # Prepare channel metadata
+    metadata = channel_data['metadata']
+    channel_dict = {
+        'id': channel_handle,  # Assuming the handle as the channel ID
+        'name': metadata['title'],
+        'url': f"https://www.youtube.com/{channel_handle}"
+    }
+
+    # Store or update the channel
+    db_channel = create_or_update_channel(db, channel_dict)
+
+    # Store or update videos
+    videos_data = channel_data['videos']
+    create_or_update_videos(db, videos_data, db_channel.id)
 
 # Highlight operations
 def get_highlight(db: Session, highlight_id: str):
@@ -65,3 +139,14 @@ def update_highlight(db: Session, highlight_id: str, highlight: schemas.Highligh
 
 def get_all_videos(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Video).offset(skip).limit(limit).all()
+
+# Helper functions to parse data
+def parse_duration(duration_str: str) -> int:
+    """Converts duration string (HH:MM:SS or MM:SS) to seconds."""
+    parts = duration_str.split(':')
+    if len(parts) == 2:
+        m, s = parts
+        h = 0
+    else:
+        h, m, s = parts
+    return int(h) * 3600 + int(m) * 60 + int(s)

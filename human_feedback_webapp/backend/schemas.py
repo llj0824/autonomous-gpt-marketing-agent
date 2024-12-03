@@ -33,6 +33,8 @@ class Channel(ChannelBase):
 class VideoBase(BaseModel):
     title: str
     duration: int
+    url: str
+    thumbnail_url: str
 
 class VideoCreate(VideoBase):
     id: str

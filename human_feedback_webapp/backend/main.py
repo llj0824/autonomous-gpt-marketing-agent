@@ -40,11 +40,11 @@ def get_db():
         db.close()
 
 @app.post("/channels", response_model=schemas.Channel)
-def create_channel(channel: schemas.ChannelCreate, db: Session = Depends(get_db)):
-    db_channel = crud.get_channel(db, channel_id=channel.id)
-    if db_channel:
-        raise HTTPException(status_code=400, detail="Channel already registered")
-    return crud.create_channel(db=db, channel=channel)
+async def create_channel(channel_handle: str, db: Session = Depends(get_db)):
+    try:
+        return await crud.create_or_update_channel(db, channel_handle)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/channels", response_model=List[schemas.Channel])
 def read_channels(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

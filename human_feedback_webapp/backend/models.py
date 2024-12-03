@@ -32,8 +32,10 @@ class Video(Base):
     title = Column(String)
     duration = Column(Integer)
     processed_at = Column(DateTime, default=datetime.utcnow)
+    url = Column(String)
+    thumbnail_url = Column(String)
 
-    channel = relationship("Channel", back_populates="videos")
+    channel = relationship("Channel", back_populates="videos")    
     highlights = relationship("Highlight", back_populates="video")
 
 class Highlight(Base):

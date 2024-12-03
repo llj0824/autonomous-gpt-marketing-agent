@@ -3,7 +3,7 @@ import time
 import requests
 import json
 
-class YoutubeTranscriptRetriever:
+class YoutubeService:
     """
     Fetches and parses YouTube video transcripts and metadata.
     
@@ -93,7 +93,6 @@ class YoutubeTranscriptRetriever:
             raise Exception('Channel data not found')
         
         data = json.loads(match.group(1))
-        print("ytInitialData:", json.dumps(data, indent=2))
         
         # Extract metadata from channelMetadataRenderer
         channel_metadata = data['metadata']['channelMetadataRenderer']
@@ -151,23 +150,23 @@ class YoutubeTranscriptRetriever:
         """
         for attempt in range(1, retry_attempts + 1):
             try:
-                video_id = YoutubeTranscriptRetriever.extract_video_id(video_id_or_url)
+                video_id = YoutubeService.extract_video_id(video_id_or_url)
                 if not video_id:
                     raise ValueError('Invalid YouTube video ID or URL.')
 
-                html = await YoutubeTranscriptRetriever.fetch_video_page(video_id)
-                initial_data = YoutubeTranscriptRetriever.extract_initial_data(html)
-                caption_tracks = YoutubeTranscriptRetriever.extract_caption_tracks(initial_data)
+                html = await YoutubeService.fetch_video_page(video_id)
+                initial_data = YoutubeService.extract_initial_data(html)
+                caption_tracks = YoutubeService.extract_caption_tracks(initial_data)
                 
                 if not caption_tracks:
                     raise Exception('NO_CAPTIONS')
 
                 transcript_url = caption_tracks[0]['baseUrl']
-                xml_transcript = await YoutubeTranscriptRetriever.fetch_transcript_xml(transcript_url)
-                parsed_transcript = YoutubeTranscriptRetriever.parse_transcript_xml(xml_transcript)
+                xml_transcript = await YoutubeService.fetch_transcript_xml(transcript_url)
+                parsed_transcript = YoutubeService.parse_transcript_xml(xml_transcript)
 
                 video_details = initial_data.get('videoDetails', {})
-                context_block = YoutubeTranscriptRetriever.parse_transcript_context(video_details)
+                context_block = YoutubeService.parse_transcript_context(video_details)
                 
                 return context_block + parsed_transcript
 
@@ -303,10 +302,10 @@ class YoutubeTranscriptRetriever:
     def parse_transcript_context(video_details):
         """Parses and filters the video description to extract relevant content."""
         if not video_details or 'shortDescription' not in video_details:
-            return (f"{YoutubeTranscriptRetriever.CONTEXT_BEGINS_DELIMITER}\n"
+            return (f"{YoutubeService.CONTEXT_BEGINS_DELIMITER}\n"
                    f"Title: Unknown\n"
                    f"Description: No description available\n"
-                   f"{YoutubeTranscriptRetriever.TRANSCRIPT_BEGINS_DELIMITER}\n")
+                   f"{YoutubeService.TRANSCRIPT_BEGINS_DELIMITER}\n")
 
         # Get first paragraph
         first_paragraph = video_details['shortDescription'].split('\n\n')[0]
@@ -319,8 +318,8 @@ class YoutubeTranscriptRetriever:
 
         description = f"{first_paragraph}\n\nTimestamps:\n{chapter_timestamps}"
 
-        return (f"{YoutubeTranscriptRetriever.CONTEXT_BEGINS_DELIMITER}\n"
+        return (f"{YoutubeService.CONTEXT_BEGINS_DELIMITER}\n"
                 f"Title: {video_details.get('title', 'Unknown')}\n"
                 f"Description: {description}\n"
-                f"{YoutubeTranscriptRetriever.TRANSCRIPT_BEGINS_DELIMITER}\n")
+                f"{YoutubeService.TRANSCRIPT_BEGINS_DELIMITER}\n")
 

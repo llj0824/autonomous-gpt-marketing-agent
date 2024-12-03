@@ -58,35 +58,33 @@ const Dashboard = () => {
   const handleAddChannel = async (e) => {
     e.preventDefault();
     try {
-      // Extract channel ID from the provided URL
-      const channelId = extractChannelId(newChannelUrl);
-
-      // Make POST request to backend API to create new channel
-      await axios.post('/channels', {
-        id: channelId,
-        name: `Channel ${channelId}`,  // TODO: Call YouTube API to get channel name & description
-        url: newChannelUrl
-      });
-      
-      // Reset form and refresh channel list
-      setNewChannelUrl('');
-      fetchChannels();
+        // Extract channel handle from URL
+        const channelHandle = extractChannelHandle(newChannelUrl);
+        
+        // Send request to backend
+        await axios.post('/channels', null, {
+            params: { channel_handle: channelHandle }
+        });
+        
+        // Reset form and refresh channel list
+        setNewChannelUrl('');
+        fetchChannels();
+        
     } catch (error) {
       console.error('Error adding channel:', error);
     }
   };
 
-  // Extract channel ID from different YouTube URL formats
-  const extractChannelId = (url) => {
+  const extractChannelHandle = (url) => {
     try {
-      const urlObj = new URL(url);
-      if (urlObj.hostname === 'www.youtube.com') {
-        // Handle /@[name] format
-        if (urlObj.pathname.startsWith('/@')) {
-          return urlObj.pathname.substring(2).split('/')[0];
+        const urlObj = new URL(url);
+        if (urlObj.hostname === 'www.youtube.com') {
+            // Handle /@[name] format
+            if (urlObj.pathname.startsWith('/@')) {
+                return urlObj.pathname.split('/')[0]; // Returns @HandleName
+            }
         }
-      }
-      throw new Error('Invalid YouTube channel URL');
+        throw new Error('Invalid YouTube channel URL');
     } catch (error) {
       throw new Error('Please enter a valid YouTube channel URL');
     }

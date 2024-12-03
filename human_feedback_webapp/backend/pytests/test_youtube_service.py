@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from ..youtube_service import YoutubeTranscriptRetriever
+from ..youtube_service import YoutubeService
 
 @pytest.mark.skip(reason="Test disabled until we need to fetch transcript.")
 @pytest.mark.asyncio
@@ -8,7 +8,7 @@ async def test_fetch_parsed_transcript_with_valid_video():
     """Test fetching transcript from a known YouTube video with captions."""
     # Using a TED talk video which is likely to have English captions
     video_url = "https://www.youtube.com/watch?v=JV-m9bJTrh8"
-    retriever = YoutubeTranscriptRetriever()
+    retriever = YoutubeService()
     transcript = await retriever.fetch_parsed_transcript(video_url)
     assert transcript is not None, "Transcript should not be None"
     assert len(transcript) > 0, "Transcript should contain at least one segment"
@@ -19,7 +19,7 @@ async def test_fetch_channel_data():
     # Using TED's YouTube channel as it's likely to remain active
     channel_handle = "@TED"
     
-    channel_data = await YoutubeTranscriptRetriever.fetch_channel_data(channel_handle)
+    channel_data = await YoutubeService.fetch_channel_data(channel_handle)
     
     # Test metadata structure
     assert isinstance(channel_data, dict), "Channel data should be a dictionary"
