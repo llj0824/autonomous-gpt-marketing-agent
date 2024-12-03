@@ -13,42 +13,6 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
-# Channel Schemas
-class ChannelBase(BaseModel):
-    name: str
-    url: str
-
-class ChannelCreate(ChannelBase):
-    id: str
-
-class Channel(ChannelBase):
-    id: str
-    last_checked: datetime
-    videos: List[Video] = []
-
-    class Config:
-        from_attributes = True
-
-# Video Schemas
-class VideoBase(BaseModel):
-    title: str
-    duration: int
-    url: str
-    thumbnail_url: str
-
-class VideoCreate(VideoBase):
-    id: str
-    channel_id: str
-
-class Video(VideoBase):
-    id: str
-    channel_id: str
-    processed_at: datetime
-    highlights: List[Highlight] = []
-
-    class Config:
-        from_attributes = True
-
 # Highlight Schemas
 class HighlightBase(BaseModel):
     id: str
@@ -84,3 +48,40 @@ class Highlight(HighlightBase):
 
     class Config:
         orm_mode = True
+
+# Video Schemas
+class VideoBase(BaseModel):
+    title: str
+    duration: int
+    url: str
+    thumbnail_url: str
+
+class VideoCreate(VideoBase):
+    id: str
+    channel_id: str
+
+class Video(VideoBase):
+    id: str
+    channel_id: str
+    processed_at: datetime
+    highlights: List[Highlight] = []
+
+    class Config:
+        from_attributes = True
+
+
+# Channel Schemas
+class ChannelBase(BaseModel):
+    name: str
+    url: str
+
+class ChannelCreate(ChannelBase):
+    id: str
+
+class Channel(ChannelBase):
+    id: str
+    last_checked: datetime
+    videos: List[Video] = []
+
+    class Config:
+        from_attributes = True
