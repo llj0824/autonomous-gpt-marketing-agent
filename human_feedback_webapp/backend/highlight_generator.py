@@ -12,8 +12,7 @@ It works asynchronously to handle multiple videos efficiently.
 
 import asyncio
 from typing import List
-from .youtube_transcript_retriever import YoutubeTranscriptRetriever
-from .transcript_processor import process_transcript
+
 from .highlight_analyzer import HighlightAnalyzer
 from . import crud
 from sqlalchemy.orm import Session

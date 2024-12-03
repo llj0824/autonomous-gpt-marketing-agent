@@ -88,5 +88,12 @@ def update_highlight(highlight_id: str, highlight: schemas.HighlightUpdate, db: 
         raise HTTPException(status_code=404, detail="Highlight not found")
     return crud.update_highlight(db=db, highlight_id=highlight_id, highlight=highlight)
 
+@app.get("/videos/{video_id}/transcript", response_model=schemas.Transcript)
+def read_transcript(video_id: str, db: Session = Depends(get_db)):
+    transcript = crud.get_transcript(db, video_id=video_id)
+    if not transcript:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+    return transcript
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

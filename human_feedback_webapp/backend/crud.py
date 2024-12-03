@@ -155,3 +155,10 @@ def parse_duration(duration_str: str) -> int:
     else:
         h, m, s = parts
     return int(h) * 3600 + int(m) * 60 + int(s)
+
+def get_transcript(db: Session, video_id: str):
+    db_transcript = db.query(models.Transcript).filter(models.Transcript.video_id == video_id).first()
+    if db_transcript:
+        return schemas.Transcript(id=db_transcript.id, video_id=video_id, transcript=db_transcript.content)
+    else:
+        return None
