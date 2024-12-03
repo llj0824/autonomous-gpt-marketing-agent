@@ -16,6 +16,9 @@ from . import models, schemas
 from datetime import datetime, timezone
 from .youtube_service import YoutubeService
 
+# Add at the top of the file, after the imports
+MAX_VIDEOS_PER_CHANNEL = 10  # Configurable constant
+
 # Create a module-level instance of YoutubeService
 youtube_service = YoutubeService()
 
@@ -29,6 +32,7 @@ def get_channels(db: Session, skip: int = 0, limit: int = 100):
 async def create_or_update_channel(db: Session, channel_handle: str):
     """
     Creates or updates a channel and its videos by fetching data from YouTube.
+    Limited to MAX_VIDEOS_PER_CHANNEL most recent videos.
     
     Args:
         db: Database session
@@ -47,18 +51,18 @@ async def create_or_update_channel(db: Session, channel_handle: str):
         )
         db.merge(db_channel)
         
-        # Create/update videos
-        for video in channel_data['videos']:
-                duration = parse_duration(video.get('duration', '0:00'))
-                db_video = models.Video(
-                    id=video['videoId'],
-                    channel_id=channel_handle,
-                    title=video['title'],
-                    duration=duration,
-                    url=f"https://www.youtube.com/watch?v={video['videoId']}",
-                    thumbnail_url=video.get('thumbnailUrl', '')
-                )
-                db.merge(db_video)
+        # Create/update videos (limited to MAX_VIDEOS_PER_CHANNEL)
+        for video in channel_data['videos'][:MAX_VIDEOS_PER_CHANNEL]:
+            duration = parse_duration(video.get('duration', '0:00'))
+            db_video = models.Video(
+                id=video['videoId'],
+                channel_id=channel_handle,
+                title=video['title'],
+                duration=duration,
+                url=f"https://www.youtube.com/watch?v={video['videoId']}",
+                thumbnail_url=video.get('thumbnailUrl', '')
+            )
+            db.merge(db_video)
             
         db.commit()
         return db_channel
