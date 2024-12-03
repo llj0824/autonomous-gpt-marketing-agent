@@ -84,13 +84,20 @@ const Dashboard = () => {
     }
   };
 
+  /**
+   * Extracts the channel identifier from a YouTube channel URL
+   * 
+   * @param {string} url - YouTube channel URL (e.g. "https://www.youtube.com/@Bankless" or "https://www.youtube.com/@Bankless/videos")
+   * @returns {string} Channel identifier (e.g. "@Bankless")
+   * @throws {Error} If URL is invalid or not a YouTube channel URL
+   */
   const extractChannelIdentifier = (url) => {
     try {
       const urlObj = new URL(url);
       if (urlObj.hostname === 'www.youtube.com') {
         // Handle /@[name] format
         if (urlObj.pathname.startsWith('/@')) {
-          return urlObj.pathname.split('/')[0]; // Returns @HandleName
+          return urlObj.pathname.split('/')[1]; 
         }
       }
       throw new Error('Invalid YouTube channel URL');

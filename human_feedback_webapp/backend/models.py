@@ -27,11 +27,11 @@ class Channel(Base):
 
 class Video(Base):
     __tablename__ = 'videos'
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True)
     channel_id = Column(String, ForeignKey('channels.id'))
     title = Column(String)
     duration = Column(Integer)
-    processed_at = Column(DateTime, default=datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True)
     url = Column(String)
     thumbnail_url = Column(String)
 

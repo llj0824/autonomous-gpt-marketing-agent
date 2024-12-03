@@ -13,7 +13,7 @@ database interactions for the application.
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas
-from datetime import datetime
+from datetime import datetime, timezone
 from .youtube_service import YoutubeService
 
 # Create a module-level instance of YoutubeService
@@ -42,22 +42,23 @@ async def create_or_update_channel(db: Session, channel_handle: str):
         db_channel = models.Channel(
             id=channel_handle,
             name=channel_data['metadata']['title'],
-            url=f"https://www.youtube.com/{channel_handle}"
+            url=f"https://www.youtube.com/{channel_handle}",
+            last_checked=datetime.now(timezone.utc)
         )
         db.merge(db_channel)
         
         # Create/update videos
         for video in channel_data['videos']:
-            duration = parse_duration(video.get('duration', '0:00'))
-            db_video = models.Video(
-                id=video['videoId'],
-                channel_id=channel_handle,
-                title=video['title'],
-                duration=duration,
-                url=video['url'],
-                thumbnail_url=video['thumbnailUrl']
-            )
-            db.merge(db_video)
+                duration = parse_duration(video.get('duration', '0:00'))
+                db_video = models.Video(
+                    id=video['videoId'],
+                    channel_id=channel_handle,
+                    title=video['title'],
+                    duration=duration,
+                    url=f"https://www.youtube.com/watch?v={video['videoId']}",
+                    thumbnail_url=video.get('thumbnailUrl', '')
+                )
+                db.merge(db_video)
             
         db.commit()
         return db_channel

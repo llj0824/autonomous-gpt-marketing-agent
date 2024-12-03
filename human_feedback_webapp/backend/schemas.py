@@ -63,7 +63,7 @@ class VideoCreate(VideoBase):
 class Video(VideoBase):
     id: str
     channel_id: str
-    processed_at: datetime
+    processed_at: Optional[datetime] = None
     highlights: List[Highlight] = []
 
     class Config:
