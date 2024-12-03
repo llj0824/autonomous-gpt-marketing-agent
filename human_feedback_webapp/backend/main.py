@@ -18,6 +18,7 @@ from . import models, schemas, crud
 from .init_database import SessionLocal, engine
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -32,6 +33,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 def get_db():
     db = SessionLocal()
     try:
@@ -39,11 +47,15 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/channels", response_model=schemas.Channel)
+@app.post("/add_channel", response_model=schemas.Channel)
 async def create_channel(channel_handle: str, db: Session = Depends(get_db)):
     try:
-        return await crud.create_or_update_channel(db, channel_handle)
+        logger.info(f"Attempting to create/update channel with handle: {channel_handle}")
+        result = await crud.create_or_update_channel(db, channel_handle)
+        logger.info(f"Successfully processed channel: {channel_handle}")
+        return result
     except Exception as e:
+        logger.error(f"Error processing channel {channel_handle}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/channels", response_model=List[schemas.Channel])
@@ -58,6 +70,10 @@ def read_videos(channel_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Channel not found")
     return db_channel.videos
 
+@app.get("/videos", response_model=List[schemas.Video])
+def read_all_videos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_all_videos(db, skip=skip, limit=limit)
+
 @app.get("/videos/{video_id}/highlights", response_model=List[schemas.Highlight])
 def read_highlights(video_id: str, db: Session = Depends(get_db)):
     db_video = crud.get_video(db, video_id=video_id)
@@ -71,3 +87,6 @@ def update_highlight(highlight_id: str, highlight: schemas.HighlightUpdate, db: 
     if not db_highlight:
         raise HTTPException(status_code=404, detail="Highlight not found")
     return crud.update_highlight(db=db, highlight_id=highlight_id, highlight=highlight)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

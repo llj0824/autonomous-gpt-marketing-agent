@@ -12,10 +12,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Grid, 
-  Paper, 
+import {
+  Container,
+  Grid,
+  Paper,
   Typography,
   List,
   ListItem,
@@ -26,19 +26,27 @@ import {
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
+const API_BASE_URL = 'http://localhost:8000'; // Adjust port if your FastAPI backend uses a different one
+
 const Dashboard = () => {
+  // State for storing the list of YouTube channels from the backend
   const [channels, setChannels] = useState([]);
+  // State for the input field where users enter new channel URLs
   const [newChannelUrl, setNewChannelUrl] = useState('');
+  // State for storing the list of videos across all channels
   const [videos, setVideos] = useState([]);
 
+  // Fetch initial data when component mounts
   useEffect(() => {
+    // Get list of channels from /channels endpoint
     fetchChannels();
+    // Get list of videos from /videos endpoint 
     fetchVideos();
-  }, []);
+  }, []); // Empty dependency array means this only runs once on initial load
 
   const fetchChannels = async () => {
     try {
-      const response = await axios.get('/channels');
+      const response = await axios.get(`${API_BASE_URL}/channels`);
       setChannels(response.data);
     } catch (error) {
       console.error('Error fetching channels:', error);
@@ -47,7 +55,7 @@ const Dashboard = () => {
 
   const fetchVideos = async () => {
     try {
-      const response = await axios.get('/videos');
+      const response = await axios.get(`${API_BASE_URL}/videos`);
       setVideos(response.data);
     } catch (error) {
       console.error('Error fetching videos:', error);
@@ -56,35 +64,36 @@ const Dashboard = () => {
 
   // Handle form submission for adding a new YouTube channel
   const handleAddChannel = async (e) => {
+    // Prevent the default form submission behavior that would refresh the page
     e.preventDefault();
     try {
-        // Extract channel handle from URL
-        const channelHandle = extractChannelHandle(newChannelUrl);
-        
-        // Send request to backend
-        await axios.post('/channels', null, {
-            params: { channel_handle: channelHandle }
-        });
-        
-        // Reset form and refresh channel list
-        setNewChannelUrl('');
-        fetchChannels();
-        
+      // Extract channel handle from URL
+      const channelHandle = extractChannelIdentifier(newChannelUrl);
+
+      // Updated API call with base URL
+      await axios.post(`${API_BASE_URL}/add_channel`, null, {
+        params: { channel_handle: channelHandle }
+      });
+
+      // Reset form and refresh channel list
+      setNewChannelUrl('');
+      fetchChannels();
+
     } catch (error) {
       console.error('Error adding channel:', error);
     }
   };
 
-  const extractChannelHandle = (url) => {
+  const extractChannelIdentifier = (url) => {
     try {
-        const urlObj = new URL(url);
-        if (urlObj.hostname === 'www.youtube.com') {
-            // Handle /@[name] format
-            if (urlObj.pathname.startsWith('/@')) {
-                return urlObj.pathname.split('/')[0]; // Returns @HandleName
-            }
+      const urlObj = new URL(url);
+      if (urlObj.hostname === 'www.youtube.com') {
+        // Handle /@[name] format
+        if (urlObj.pathname.startsWith('/@')) {
+          return urlObj.pathname.split('/')[0]; // Returns @HandleName
         }
-        throw new Error('Invalid YouTube channel URL');
+      }
+      throw new Error('Invalid YouTube channel URL');
     } catch (error) {
       throw new Error('Please enter a valid YouTube channel URL');
     }
@@ -107,9 +116,9 @@ const Dashboard = () => {
                 onChange={(e) => setNewChannelUrl(e.target.value)}
                 margin="normal"
               />
-              <Button 
-                type="submit" 
-                variant="contained" 
+              <Button
+                type="submit"
+                variant="contained"
                 color="primary"
               >
                 Add Channel
@@ -118,7 +127,7 @@ const Dashboard = () => {
             <List>
               {channels.map((channel) => (
                 <ListItem key={channel.id}>
-                  <ListItemText 
+                  <ListItemText
                     primary={channel.name}
                     secondary={channel.url}
                   />
@@ -136,15 +145,24 @@ const Dashboard = () => {
             </Typography>
             <List>
               {videos.map((video) => (
-                <ListItem 
+                <ListItem
                   key={video.id}
                   button
                   component={Link}
                   to={`/review/${video.id}`}
                 >
-                  <ListItemText 
+                  <ListItemText
                     primary={video.title}
-                    secondary={`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
+                    secondary={
+                      <>
+                        <Typography component="span" display="block">
+                          {`Channel: ${video.channel.name} • Duration: ${formatDuration(video.duration)}`}
+                        </Typography>
+                        <Typography component="span" display="block">
+                          {`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
+                        </Typography>
+                      </>
+                    }
                   />
                 </ListItem>
               ))}
@@ -154,6 +172,18 @@ const Dashboard = () => {
       </Grid>
     </Container>
   );
+};
+
+// Helper function to format duration in seconds to HH:MM:SS
+const formatDuration = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
 export default Dashboard;
