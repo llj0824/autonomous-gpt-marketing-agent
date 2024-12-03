@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "[Backend] Human-Feedback-Webapp",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "human_feedback_webapp.backend.main:app",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}",
+            "jinja": true,
+            "justMyCode": true
+        }
+    ]
+} 
