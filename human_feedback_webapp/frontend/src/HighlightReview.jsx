@@ -20,12 +20,14 @@ import {
   Paper,
   Typography,
   Button,
-  Box,
   Card,
   CardContent,
   CardActions,
-  Chip,
+  Tabs,
+  Tab
 } from '@mui/material';
+import { TabPanel } from '@mui/lab';
+
 import {
   ThumbUp as ApproveIcon,
   ThumbDown as RejectIcon,
@@ -37,8 +39,10 @@ const API_BASE_URL = 'http://localhost:8000'; // Ensure this matches your backen
 const HighlightReview = () => {
   const { videoId } = useParams();
   const [video, setVideo] = useState(null);
-  const [transcript, setTranscript] = useState('');
+  const [rawTranscript, setRawTranscript] = useState('');
+  const [processedTranscript, setProcessedTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     fetchVideoData();
@@ -60,7 +64,8 @@ const HighlightReview = () => {
   const fetchTranscript = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/transcript`);
-      setTranscript(response.data.transcript); // Assume the API returns { transcript: '...' }
+      setRawTranscript(response.data.raw_content);
+      setProcessedTranscript(response.data.processed_content);
     } catch (error) {
       console.error('Error fetching transcript:', error);
     }
@@ -102,6 +107,27 @@ const HighlightReview = () => {
     }
   };
 
+  // Update transcript display
+  const TranscriptPanel = () => (
+    <Paper sx={{ p: 2, height: '75vh', overflowY: 'auto' }}>
+      <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tab label="Processed" />
+        <Tab label="Raw" />
+      </Tabs>
+      
+      <TabPanel value={activeTab} index={0}>
+        {formatTranscript(processedTranscript)}
+      </TabPanel>
+      <TabPanel value={activeTab} index={1}>
+        {formatTranscript(rawTranscript)}
+      </TabPanel>
+    </Paper>
+  );
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   if (!video) return <div>Loading...</div>;
 
   return (
@@ -117,14 +143,7 @@ const HighlightReview = () => {
       <Grid container spacing={2} sx={{ mt: 2 }}>
         {/* Transcript Panel */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '75vh', overflowY: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-              Transcript
-            </Typography>
-            <Typography variant="body1" component="div">
-              {formatTranscript(transcript)}
-            </Typography>
-          </Paper>
+          <TranscriptPanel />
         </Grid>
 
         {/* Highlights Panel */}

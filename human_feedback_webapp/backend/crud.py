@@ -162,3 +162,15 @@ def get_transcript(db: Session, video_id: str):
         return schemas.Transcript(id=db_transcript.id, video_id=video_id, transcript=db_transcript.content)
     else:
         return None
+
+def create_or_update_transcript(db: Session, video_id: str, 
+                              raw_content: str, processed_content: str = None):
+    db_transcript = models.Transcript(
+        video_id=video_id,
+        raw_content=raw_content,
+        processed_content=processed_content,
+        processing_status="completed" if processed_content else "pending"
+    )
+    db.merge(db_transcript)
+    db.commit()
+    return db_transcript

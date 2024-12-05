@@ -54,3 +54,13 @@ class Highlight(Base):
     reviewed_at = Column(DateTime)
 
     video = relationship("Video", back_populates="highlights")
+
+class Transcript(Base):
+    __tablename__ = "transcripts"
+    id = Column(Integer, primary_key=True)
+    video_id = Column(String, ForeignKey("videos.id"))
+    raw_content = Column(Text)
+    processed_content = Column(Text)
+    processing_status = Column(String)  # pending, processing, completed, failed
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
