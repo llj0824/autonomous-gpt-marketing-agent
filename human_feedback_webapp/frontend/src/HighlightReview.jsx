@@ -24,13 +24,16 @@ import {
   CardContent,
   CardActions,
   Tabs,
-  Tab
+  Tab,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { TabPanel } from '@mui/lab';
 
 import {
   ThumbUp as ApproveIcon,
   ThumbDown as RejectIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -39,8 +42,12 @@ const API_BASE_URL = 'http://localhost:8000'; // Ensure this matches your backen
 const HighlightReview = () => {
   const { videoId } = useParams();
   const [video, setVideo] = useState(null);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const [rawTranscript, setRawTranscript] = useState('');
   const [processedTranscript, setProcessedTranscript] = useState('');
+  const [transcript, setTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -59,6 +66,20 @@ const HighlightReview = () => {
       console.error('Error fetching video:', error);
     }
   };
+
+  const handleProcessVideo = async () => {
+    setIsProcessing(true);
+    try {
+      await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
+      // Optionally, refresh state after processing
+      fetchVideoData();
+    } catch (error) {
+      console.error('Error processing video:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   // Fetch video transcript
   const fetchTranscript = async () => {
@@ -129,6 +150,23 @@ const HighlightReview = () => {
   };
 
   if (!video) return <div>Loading...</div>;
+
+  if (processingStatus !== 'completed') {
+    return (
+      <Container>
+        <Typography variant="h4">{video.title}</Typography>
+        <Alert severity="warning">This video has not been processed yet.</Alert>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleProcessVideo}
+          disabled={isProcessing}
+        >
+          {isProcessing ? 'Processing...' : 'Process Video'}
+        </Button>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>

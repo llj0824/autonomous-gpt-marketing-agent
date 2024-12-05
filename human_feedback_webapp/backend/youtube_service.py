@@ -134,7 +134,7 @@ class YoutubeService:
         }
 
     @staticmethod
-    async def fetch_parsed_transcript(video_id_or_url, retry_attempts=3):
+    async def fetch_raw_transcript(video_id_or_url, retry_attempts=3):
         """
         Fetches the transcript for the specified YouTube video and transforms to desired format.
         

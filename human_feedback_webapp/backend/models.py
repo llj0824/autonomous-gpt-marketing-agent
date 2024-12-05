@@ -15,6 +15,7 @@ from typing import List
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, CheckConstraint
 from sqlalchemy.orm import relationship
 from .init_database import Base
+from .enums import ProcessingStatus, HighlightStatus
 
 class Channel(Base):
     __tablename__ = 'channels'
@@ -49,7 +50,7 @@ class Highlight(Base):
     insight = Column(Text)
     takeaway = Column(Text)
     context = Column(Text)
-    status = Column(String, CheckConstraint("status IN ('pending', 'approved', 'rejected')"))
+    status = Column(String, CheckConstraint(f"status IN {tuple(HighlightStatus.__members__.values())}"))
     comments = Column(Text)
     reviewed_at = Column(DateTime)
 
@@ -59,8 +60,8 @@ class Transcript(Base):
     __tablename__ = "transcripts"
     id = Column(Integer, primary_key=True)
     video_id = Column(String, ForeignKey("videos.id"))
-    raw_content = Column(Text)
-    processed_content = Column(Text)
-    processing_status = Column(String)  # pending, processing, completed, failed
+    raw_transcript = Column(Text)
+    processed_transcript = Column(Text)
+    processing_status = Column(String, CheckConstraint(f"processing_status IN {tuple(ProcessingStatus.__members__.values())}"))
     created_at = Column(DateTime)
     updated_at = Column(DateTime)

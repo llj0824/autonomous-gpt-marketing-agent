@@ -15,6 +15,7 @@ from typing import List
 from . import models, schemas
 from datetime import datetime, timezone
 from .youtube_service import YoutubeService
+from .enums import ProcessingStatus
 
 # Add at the top of the file, after the imports
 MAX_VIDEOS_PER_CHANNEL = 10  # Configurable constant
@@ -163,14 +164,52 @@ def get_transcript(db: Session, video_id: str):
     else:
         return None
 
-def create_or_update_transcript(db: Session, video_id: str, 
-                              raw_content: str, processed_content: str = None):
-    db_transcript = models.Transcript(
-        video_id=video_id,
-        raw_content=raw_content,
-        processed_content=processed_content,
-        processing_status="completed" if processed_content else "pending"
-    )
-    db.merge(db_transcript)
+def create_or_update_transcript(db: Session, video_id: str, raw_transcript: str, processed_transcript: str):
+    """
+    Creates or updates a transcript for a video
+    
+    Args:
+        db: Database session
+        video_id: Video ID
+        raw_content: Raw transcript content from YouTube
+    """
+    # Check if transcript exists
+    db_transcript = db.query(models.Transcript).filter(
+        models.Transcript.video_id == video_id
+    ).first()
+    
+    if db_transcript:
+        # Update existing transcript
+        db_transcript.raw_transcript = raw_transcript
+        db_transcript.processed_transcript = processed_transcript
+        db_transcript.updated_at = datetime.now(timezone.utc)
+    else:
+        # Create new transcript, not yet processed.
+        db_transcript = models.Transcript(
+            video_id=video_id,
+            raw_transcript=raw_transcript,
+            processing_status=ProcessingStatus.PENDING,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        db.add(db_transcript)
+    
     db.commit()
     return db_transcript
+
+def update_video_processing_status(db: Session, video_id: str, status: ProcessingStatus):
+    """
+    Updates the processing status of a video
+    
+    Args:
+        db: Database session
+        video_id: Video ID
+        status: ProcessingStatus enum value： "pending", "processing", "completed", "failed"
+    """
+    db_video = get_video(db, video_id)
+    if db_video:
+        db_video.processing_status = status
+        db_video.processed_at = datetime.now(timezone.utc) if status == ProcessingStatus.COMPLETED else None
+        db.commit()
+        return db_video
+    return None

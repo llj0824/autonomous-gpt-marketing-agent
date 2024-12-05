@@ -2,7 +2,7 @@
 Pydantic Schemas
 
 This module defines the Pydantic models used for:
-- Request/response validation
+- API Request/response validation
 - Data serialization/deserialization
 - API documentation
 
@@ -12,6 +12,7 @@ These schemas mirror the database models but are specifically for API interactio
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
+from .enums import ProcessingStatus
 
 # Highlight Schemas
 class HighlightBase(BaseModel):
@@ -82,6 +83,25 @@ class Channel(ChannelBase):
     id: str
     last_checked: datetime
     videos: List[Video] = []
+
+    class Config:
+        from_attributes = True
+
+# Add these new schemas
+class TranscriptBase(BaseModel):
+    video_id: str
+    raw_transcript: str
+    processed_transcript: Optional[str] = None
+    processing_status: ProcessingStatus
+    created_at: datetime
+    updated_at: datetime
+
+class TranscriptCreate(BaseModel):
+    video_id: str
+    raw_transcript: str
+
+class Transcript(TranscriptBase):
+    id: int
 
     class Config:
         from_attributes = True
