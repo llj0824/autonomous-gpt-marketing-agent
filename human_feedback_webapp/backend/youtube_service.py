@@ -1,7 +1,29 @@
+from dataclasses import dataclass
+from datetime import datetime
+import asyncio
+from typing import List, Optional, Dict, Any
+import httpx
 import re
-import time
-import requests
 import json
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+class YouTubeError(Exception):
+    """Base exception for YouTube service errors"""
+    pass
+
+@dataclass(frozen=True)
+class CaptionTrack:
+    """Represents a single caption/subtitle track"""
+    base_url: str
+    name: str
+    language_code: str
+
+# Move constants to module level
+TRANSCRIPT_SECTION = "*** Transcript ***"
+CONTEXT_SECTION = "*** Background Context ***"
 
 class YoutubeService:
     """
@@ -50,237 +72,158 @@ class YoutubeService:
     2. Caption track format in playerCaptionsTracklistRenderer
     3. Changes to video page HTML structure
     """
-    
-    TRANSCRIPT_BEGINS_DELIMITER = "*** Transcript ***"
-    CONTEXT_BEGINS_DELIMITER = "*** Background Context ***"
 
-    @staticmethod
-    async def fetch_channel_data(channel_handle):
+    # Regex patterns for video ID extraction
+    VIDEO_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{11}$')
+    VIDEO_URL_PATTERN = re.compile(
+        r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})'
+    )
+
+    async def fetch_channel_data(self, channel_handle: str) -> Dict[str, Any]:
         """
-        Fetches channel metadata and recent videos and its metadata.
+        Fetches channel metadata and recent videos.
         
         Args:
-            channel_handle (str): Channel handle (e.g. "@Bankless")
+            channel_handle: Channel handle (e.g. "@Bankless")
             
         Returns:
-            dict: Channel metadata and videos
-            {
-                'metadata': {
-                    'title': str,
-                    'description': str,
-                    'subscriberCount': str,
-                    'thumbnailUrl': str
-                },
-                'videos': [{
-                    'videoId': str,
-                    'title': str,
-                    'url': str,
-                    'thumbnailUrl': str,
-                    'publishedAt': str,
-                    'viewCount': str,
-                    'duration': str
-                }]
-            }
+            Dictionary containing channel metadata and videos
         """
         channel_url = f"https://www.youtube.com/{channel_handle}/videos"
-        response = requests.get(channel_url)
-        if not response.ok:
-            raise Exception(f"Failed to fetch channel: {response.status_code}")
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(channel_url)
+            if not response.is_success:
+                raise YouTubeError(f"Failed to fetch channel: {response.status_code}")
 
-        # Extract ytInitialData
-        match = re.search(r'var\s+ytInitialData\s*=\s*({.+?});</script>', response.text)
-        if not match:
-            raise Exception('Channel data not found')
-        
-        data = json.loads(match.group(1))
-        
-        # Extract metadata from channelMetadataRenderer
-        channel_metadata = data['metadata']['channelMetadataRenderer']
-        metadata = {
-            'title': channel_metadata['title'],
-            'description': channel_metadata.get('description', ''),
-            'thumbnailUrl': channel_metadata['avatar']['thumbnails'][-1]['url']
-        }
-        
-        # Extract videos
-        videos = []
-        try:
-            tabs = data['contents']['twoColumnBrowseResultsRenderer']['tabs']
-            videos_tab = next(tab for tab in tabs 
-                             if 'tabRenderer' in tab 
-                             and tab['tabRenderer'].get('title') == 'Videos')
+            # Extract ytInitialData
+            match = re.search(r'var\s+ytInitialData\s*=\s*({.+?});</script>', response.text)
+            if not match:
+                raise YouTubeError('Channel data not found')
             
-            video_items = (videos_tab['tabRenderer']['content']
-                          ['richGridRenderer']['contents'])
+            data = json.loads(match.group(1))
             
-            for item in video_items:
-                if 'richItemRenderer' not in item:
-                    continue
-                    
-                video = item['richItemRenderer']['content']['videoRenderer']
-                videos.append({
-                    'videoId': video['videoId'],
-                    'title': video['title']['runs'][0]['text'],
-                    'url': f"https://www.youtube.com/watch?v={video['videoId']}",
-                    'thumbnailUrl': video['thumbnail']['thumbnails'][-1]['url'],
-                    'duration': video.get('lengthText', {}).get('simpleText', 'N/A')
-                })
-        except (KeyError, IndexError, StopIteration) as e:
-            raise Exception(f'Error parsing video data: {str(e)}')
-        
-        return {
-            'metadata': metadata,
-            'videos': videos
-        }
+            # Extract channel metadata
+            channel_metadata = data['metadata']['channelMetadataRenderer']
+            metadata = {
+                'title': channel_metadata['title'],
+                'description': channel_metadata.get('description', ''),
+                'thumbnailUrl': channel_metadata['avatar']['thumbnails'][-1]['url']
+            }
+            
+            # Extract videos
+            videos = []
+            try:
+                tabs = data['contents']['twoColumnBrowseResultsRenderer']['tabs']
+                videos_tab = next(tab for tab in tabs 
+                                if 'tabRenderer' in tab 
+                                and tab['tabRenderer'].get('title') == 'Videos')
+                
+                video_items = (videos_tab['tabRenderer']['content']
+                              ['richGridRenderer']['contents'])
+                
+                for item in video_items:
+                    if 'richItemRenderer' not in item:
+                        continue
+                        
+                    video = item['richItemRenderer']['content']['videoRenderer']
+                    videos.append({
+                        'videoId': video['videoId'],
+                        'title': video['title']['runs'][0]['text'],
+                        'url': f"https://www.youtube.com/watch?v={video['videoId']}",
+                        'thumbnailUrl': video['thumbnail']['thumbnails'][-1]['url'],
+                        'duration': video.get('lengthText', {}).get('simpleText', 'N/A')
+                    })
+            except Exception as e:
+                logger.error(f'Error parsing video data: {str(e)}')
+                raise YouTubeError(f'Error parsing video data: {str(e)}')
+            
+            return {
+                'metadata': metadata,
+                'videos': videos
+            }
 
-    @staticmethod
-    async def fetch_raw_transcript(video_id_or_url, retry_attempts=3):
+    async def fetch_transcript(self, video_id_or_url: str, max_retries: int = 3) -> str:
         """
-        Fetches the transcript for the specified YouTube video and transforms to desired format.
+        Fetches and parses the transcript for a YouTube video.
         
         Args:
-            video_id_or_url (str): The YouTube video ID or full URL
-            retry_attempts (int): Number of retry attempts if fetching fails
+            video_id_or_url: Video ID or URL
+            max_retries: Number of retry attempts
             
         Returns:
-            str: The raw transcript as a single string
-            
-        Raises:
-            Exception: If the transcript cannot be retrieved
+            Formatted transcript string
         """
-        for attempt in range(1, retry_attempts + 1):
-            try:
-                video_id = YoutubeService.extract_video_id(video_id_or_url)
-                if not video_id:
-                    raise ValueError('Invalid YouTube video ID or URL.')
+        video_id = self.extract_video_id(video_id_or_url)
+        if not video_id:
+            raise YouTubeError('Invalid YouTube video ID or URL')
 
-                html = await YoutubeService.fetch_video_page(video_id)
-                initial_data = YoutubeService.extract_initial_data(html)
-                caption_tracks = YoutubeService.extract_caption_tracks(initial_data)
+        async with httpx.AsyncClient() as client:
+        for attempt in range(max_retries):
+            try:
+                # Fetch video page
+                response = await client.get(f"https://www.youtube.com/watch?v={video_id}")
+                response.raise_for_status()
+                
+                # Extract player data
+                match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;', response.text)
+                if not match:
+                    raise YouTubeError('Could not find player data')
+                
+                player_data = json.loads(match.group(1))
+                
+                # Get caption tracks
+                caption_tracks = (player_data.get('captions', {})
+                                .get('playerCaptionsTracklistRenderer', {})
+                                .get('captionTracks', []))
                 
                 if not caption_tracks:
-                    raise Exception('NO_CAPTIONS')
-
+                    raise YouTubeError('NO_CAPTIONS')
+                
+                # Fetch transcript XML
                 transcript_url = caption_tracks[0]['baseUrl']
-                xml_transcript = await YoutubeService.fetch_transcript_xml(transcript_url)
-                parsed_transcript = YoutubeService.parse_transcript_xml(xml_transcript)
-
-                video_details = initial_data.get('videoDetails', {})
-                context_block = YoutubeService.parse_transcript_context(video_details)
+                transcript_response = await client.get(transcript_url)
+                transcript_response.raise_for_status()
                 
-                return context_block + parsed_transcript
-
-            except Exception as error:
-                if str(error) == 'NO_CAPTIONS':
-                    raise Exception('This video does not have captions available for automatic retrieval.')
+                # Parse transcript
+                transcript = self.parse_transcript_xml(transcript_response.text)
                 
-                if attempt == retry_attempts:
-                    # Note: In Python we might want to handle this differently since we don't have window.alert
-                    print('Unable to load the transcript automatically.\n\n'
-                          'Please try:\n'
-                          '1) Toggling off the extension\n'
-                          '2) Refreshing the YouTube page')
-                    raise
+                # Add video context
+                video_details = player_data.get('videoDetails', {})
+                context = self.create_context_block(video_details)
                 
-                # Wait before retrying
-                time.sleep(1)
-
-    @staticmethod
-    async def fetch_video_page(video_id):
-        """Fetches the HTML content of the YouTube video page."""
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
-        response = requests.get(video_url)
-        if not response.ok:
-            raise Exception(f"Failed to fetch video page: {response.status_code}")
-        return response.text
-
-    @staticmethod
-    def extract_initial_data(html):
-        """
-        Extracts the initial JSON data from the YouTube video page HTML.
-        
-        The data is found in a <script> tag containing 'ytInitialPlayerResponse'.
-        This contains video metadata, playback info, and caption/transcript data.
-        
-        Structure:
-        {
-            videoDetails: {...},
-            playabilityStatus: {...},
-            streamingData: {...},
-            captions: {
-                playerCaptionsTracklistRenderer: {
-                    captionTracks: [...]
+                return {
+                    'raw_content': transcript_response.text,
+                    'processed_content': f"{context}\n{TRANSCRIPT_SECTION}\n{transcript}"
                 }
-            }
-        }
-        
-        Args:
-            html (str): Raw HTML content of the YouTube video page
             
-        Returns:
-            dict: Parsed ytInitialPlayerResponse data
-            
-        Raises:
-            Exception: If the initial data cannot be found or parsed
-        """
-        match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;', html)
-        if not match:
-            raise Exception('Initial data not found in the page.')
-        return eval(match.group(1))  # Note: In production, use json.loads with proper sanitization
+            except YouTubeError as e:
+                if str(e) == 'NO_CAPTIONS':
+                    raise YouTubeError('This video does not have captions available for automatic retrieval.')
+                if attempt == max_retries - 1:
+                    raise YouTubeError(f'Failed to fetch transcript: {str(e)}')
+                await asyncio.sleep(1)
+
 
     @staticmethod
-    def extract_caption_tracks(initial_data):
-        """
-        Extracts caption track information from the initial player data.
-        
-        Caption tracks are found in:
-        initial_data['captions']['playerCaptionsTracklistRenderer']['captionTracks']
-        
-        Each track contains:
-        {
-            baseUrl: str,      # URL to fetch transcript XML
-            name: str,         # Language name
-            languageCode: str, # ISO language code
-            ...
-        }
-        
-        Args:
-            initial_data (dict): Parsed ytInitialPlayerResponse data
-            
-        Returns:
-            list: Available caption tracks with URLs and metadata
-        """
-        captions = initial_data.get('captions', {})
-        if not captions:
-            return None
-            
-        return captions.get('playerCaptionsTracklistRenderer', {}).get('captionTracks', [])
-
-    @staticmethod
-    async def fetch_transcript_xml(transcript_url):
-        """Fetches the XML transcript from the provided URL."""
-        response = requests.get(transcript_url)
-        return response.text
-
-    @staticmethod
-    def parse_transcript_xml(xml_transcript):
-        """Parses the XML transcript and formats it into a readable string."""
-        lines = re.findall(r'<text.+?>.+?</text>', xml_transcript) or []
-        current_timestamp = 0
+    def parse_transcript_xml(xml_text: str) -> str:
+        """Converts XML transcript to readable text with timestamps."""
+        lines = re.findall(r'<text.+?>.+?</text>', xml_text) or []
         formatted_lines = []
 
         for line in lines:
-            start_match = re.search(r'start="([\d.]+)"', line)
-            start = float(start_match.group(1)) if start_match else current_timestamp
-            current_timestamp = start
-
+            # Extract timestamp
+            start = float(re.search(r'start="([\d.]+)"', line).group(1))
+            
+            # Extract and clean text
             text = re.sub(r'<.+?>', '', line).strip()
             
+            # Format timestamp
             minutes = int(start // 60)
             seconds = int(start % 60)
-            formatted_time = f"[{minutes}:{seconds:02d}]"
+            timestamp = f"[{minutes}:{seconds:02d}]"
 
-            formatted_lines.append(f"{formatted_time} {text}")
+            formatted_lines.append(f"{timestamp} {text}")
 
         return '\n'.join(formatted_lines)
 
@@ -299,27 +242,26 @@ class YoutubeService:
         return url_match.group(1) if url_match else None
 
     @staticmethod
-    def parse_transcript_context(video_details):
+    def create_context_block(video_details):
         """Parses and filters the video description to extract relevant content."""
         if not video_details or 'shortDescription' not in video_details:
-            return (f"{YoutubeService.CONTEXT_BEGINS_DELIMITER}\n"
-                   f"Title: Unknown\n"
-                   f"Description: No description available\n"
-                   f"{YoutubeService.TRANSCRIPT_BEGINS_DELIMITER}\n")
+            return (f"{CONTEXT_SECTION}\n"
+                f"Title: Unknown\n"
+                f"Description: No description available\n")
 
         # Get first paragraph
-        first_paragraph = video_details['shortDescription'].split('\n\n')[0]
+        description = video_details.get('shortDescription', '')
+        first_paragraph = description.split('\n\n')[0]
 
         # Extract timestamp lines
-        chapter_timestamps = '\n'.join(
-            line for line in video_details['shortDescription'].split('\n')
+        timestamps = '\n'.join(
+            line for line in description.split('\n')
             if re.match(r'^\d+:\d+', line.strip())
+        ) or 'No timestamps available'
+        
+        return (
+            f"{CONTEXT_SECTION}\n"
+            f"Title: {video_details.get('title', 'Unknown')}\n"
+            f"Description: {first_paragraph}\n\n"
+            f"Timestamps:\n{timestamps}\n"
         )
-
-        description = f"{first_paragraph}\n\nTimestamps:\n{chapter_timestamps}"
-
-        return (f"{YoutubeService.CONTEXT_BEGINS_DELIMITER}\n"
-                f"Title: {video_details.get('title', 'Unknown')}\n"
-                f"Description: {description}\n"
-                f"{YoutubeService.TRANSCRIPT_BEGINS_DELIMITER}\n")
-

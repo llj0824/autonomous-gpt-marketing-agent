@@ -29,8 +29,8 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Highlight Review Application")
 
 # Initialize services
-youtube_service = YoutubeService()
 highlight_generator = HighlightGenerator()
+youtube_service = YoutubeService()
 
 
 # If our frontend and backend are running on different origins, we need to enable CORS in the backend:
@@ -100,7 +100,7 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
         crud.update_video_processing_status(db, video_id, ProcessingStatus.PROCESSING)
         
         # Fetch and store transcript
-        transcript = await youtube_service.fetch_parsed_transcript(video_id)
+        transcript = await youtube_service.fetch_transcript(video_id)
         crud.create_or_update_transcript(db, video_id, transcript)
         
         # Generate highlights

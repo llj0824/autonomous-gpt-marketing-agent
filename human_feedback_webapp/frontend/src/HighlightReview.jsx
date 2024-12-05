@@ -25,15 +25,13 @@ import {
   CardActions,
   Tabs,
   Tab,
-  Alert,
-  CircularProgress
+  Alert
 } from '@mui/material';
 import { TabPanel } from '@mui/lab';
 
 import {
   ThumbUp as ApproveIcon,
   ThumbDown as RejectIcon,
-  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -57,6 +55,12 @@ const HighlightReview = () => {
     fetchHighlights();
   }, [videoId]);
 
+  // ##########################################
+  // #                                        #
+  // #              update states             #
+  // #                                        #
+  // ##########################################
+
   // Fetch video metadata
   const fetchVideoData = async () => {
     try {
@@ -66,20 +70,6 @@ const HighlightReview = () => {
       console.error('Error fetching video:', error);
     }
   };
-
-  const handleProcessVideo = async () => {
-    setIsProcessing(true);
-    try {
-      await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
-      // Optionally, refresh state after processing
-      fetchVideoData();
-    } catch (error) {
-      console.error('Error processing video:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
 
   // Fetch video transcript
   const fetchTranscript = async () => {
@@ -99,6 +89,25 @@ const HighlightReview = () => {
       setHighlights(response.data);
     } catch (error) {
       console.error('Error fetching highlights:', error);
+    }
+  };
+
+  // ##########################################
+  // #                                        #
+  // #              Handlers                  #
+  // #                                        #
+  // ##########################################
+
+  const handleProcessVideo = async () => {
+    setIsProcessing(true);
+    try {
+      await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
+      // Optionally, refresh state after processing
+      fetchVideoData();
+    } catch (error) {
+      console.error('Error processing video:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
