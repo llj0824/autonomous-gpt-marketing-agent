@@ -25,8 +25,6 @@ import axios from 'axios';
 import TranscriptPanel from './TranscriptPanel';
 import HighlightCard from './HighlightCard';
 import { formatDuration } from './utils';
-import { CircularProgress } from '@mui/material';
-
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -84,8 +82,8 @@ const HighlightReview = () => {
     setIsProcessing(true);
     try {
       await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
-      // Refresh all data after processing
-      await fetchAllData();
+      // Refresh video data after processing
+      await fetchVideoData();
     } catch (error) {
       console.error('Error processing video:', error);
     } finally {
@@ -111,6 +109,28 @@ const HighlightReview = () => {
     }
   };
 
+  const getTranscriptContext = (highlight) => {
+    if (!processedTranscript) return null;
+
+    // Split transcript into lines
+    const lines = processedTranscript.split('\n');
+    
+    // Find the highlight's position in transcript
+    const highlightStart = highlight.content.match(/\[(\d{2}:\d{2})\s*->/)[1];
+    const startIdx = lines.findIndex(line => line.includes(highlightStart));
+    
+    if (startIdx === -1) return null;
+
+    // Get 3 lines before and after the highlight
+    const contextLines = {
+      before: lines.slice(Math.max(0, startIdx - 3), startIdx),
+      highlight: [lines[startIdx]], // You might need to adjust this based on your highlight format
+      after: lines.slice(startIdx + 1, startIdx + 4)
+    };
+
+    return contextLines;
+  };
+
   if (!video) return <div>Loading...</div>;
 
   return (
@@ -129,18 +149,12 @@ const HighlightReview = () => {
         disabled={isProcessing}
         sx={{ mb: 2 }}
       >
-        {isProcessing ? (
-          <>
-            Processing... <CircularProgress size={20} sx={{ ml: 1, color: 'white' }} />
-          </>
-        ) : (
-          'Process Video'
-        )}
+        {isProcessing ? 'Processing...' : 'Process Video'}
       </Button>
 
       <Grid container spacing={2} sx={{ mt: 2 }}>
         <Grid item xs={12} md={6}>
-          <TranscriptPanel
+          <TranscriptPanel 
             processedTranscript={processedTranscript}
             rawTranscript={rawTranscript}
           />
@@ -160,6 +174,8 @@ const HighlightReview = () => {
                   index={index}
                   onApprove={handleApprove}
                   onReject={handleReject}
+                  videoId={video.youtube_id}
+                  transcriptContext={getTranscriptContext(highlight)}
                 />
               ))
             )}
