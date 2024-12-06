@@ -20,8 +20,9 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .youtube_service import YoutubeService
-from .highlight_generator import HighlightGenerator
 from .enums import ProcessingStatus
+from .llm_api_utils import LLM_API_Utils
+import traceback
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -29,8 +30,8 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Highlight Review Application")
 
 # Initialize services
-highlight_generator = HighlightGenerator()
 youtube_service = YoutubeService()
+llm_api_utils = LLM_API_Utils()
 
 
 # If our frontend and backend are running on different origins, we need to enable CORS in the backend:
@@ -86,40 +87,69 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
     1. Fetches and stores transcript
     2. Generates highlights
     """
+    logger.info(f"Starting video processing for video_id: {video_id}")
+    
     # Check if video exists
     video = crud.get_video(db, video_id)
     if not video:
+        logger.warning(f"Video not found with id: {video_id}")
         raise HTTPException(status_code=404, detail="Video not found")
         
     # Check if already processing
     if video.processing_status == ProcessingStatus.PROCESSING:
+        logger.warning(f"Video {video_id} is already being processed")
         raise HTTPException(status_code=400, detail="Video is already being processed")
         
     try:
         # Update status to processing
+        logger.info(f"Setting video {video_id} status to PROCESSING")
         crud.update_video_processing_status(db, video_id, ProcessingStatus.PROCESSING)
         
         # Fetch raw transcript
+        logger.info(f"Fetching raw transcript for video {video_id}")
         raw_transcript = await youtube_service.fetch_raw_transcript(video_id)
+        logger.info(f"Successfully fetched raw transcript for video {video_id} (length: {len(raw_transcript)})")
 
-        # Process transcript
+        # Process transcript using LLM_API_Utils
+        logger.info(f"Starting parallel transcript processing for video {video_id}")
+        processed_transcript = await llm_api_utils.process_transcript_in_parallel(raw_transcript)
+        logger.info(f"Successfully processed transcript for video {video_id} (length: {len(processed_transcript)})")
         
-
-        
-        crud.create_or_update_transcript(db, video_id, transcript)
+        logger.info(f"Saving transcript to database for video {video_id}")
+        crud.create_or_update_transcript(
+            db=db, 
+            video_id=video_id, 
+            raw_transcript=raw_transcript,
+            processed_transcript=processed_transcript
+        )
+        logger.info(f"Successfully saved transcript for video {video_id}")
         
         # Generate highlights
+        logger.info(f"Starting highlight generation for video {video_id}")
         await highlight_generator.generate_highlights(video_id, db)
+        logger.info(f"Successfully generated highlights for video {video_id}")
         
         # Update status to completed
+        logger.info(f"Setting video {video_id} status to COMPLETED")
         crud.update_video_processing_status(db, video_id, ProcessingStatus.COMPLETED)
         
+        logger.info(f"Video processing completed successfully for video {video_id}")
         return {"message": "Video processing completed successfully"}
         
     except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error processing video {video_id}: {str(e)}", exc_info=True)
         # Update status to failed
         crud.update_video_processing_status(db, video_id, ProcessingStatus.FAILED)
-        raise HTTPException(status_code=500, detail=str(e))
+        # Raise HTTP exception with more detailed error information
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "traceback": f"{traceback.format_exc()}"
+            }
+        )
 
 @app.get("/videos/{video_id}/status")
 def get_video_status(video_id: str, db: Session = Depends(get_db)):
