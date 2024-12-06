@@ -31,7 +31,6 @@ const ExpandButton = styled(IconButton)(({ theme, expanded }) => ({
 }));
 
 const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
-  const [expanded, setExpanded] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
 
   // Extract first timestamp from content for the "Watch from" link
@@ -54,90 +53,98 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
       }}
     >
       {/* Card Header */}
-      <CardContent sx={{ pb: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
             <Typography variant="h6" component="div">
               Highlight #{index + 1}
             </Typography>
-            <Typography 
-              variant="body2" 
-              color="text.secondary" 
-              sx={{ 
-                maxWidth: '600px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
+            <Typography variant="body2" color="text.secondary">
               {summary}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Chip
-              icon={<PlayArrowIcon />}
+          <Chip
+            icon={<PlayArrowIcon />}
               label={`Watch from ${startTime}`}
-              clickable
-              color="primary"
-              variant="outlined"
-              onClick={() => {/* TODO: Add video link handler */}}
-            />
-            <ExpandButton
-              expanded={expanded ? 1 : 0}
-              onClick={() => setExpanded(!expanded)}
-              aria-expanded={expanded}
-              aria-label="show more"
-            >
-              <ExpandMoreIcon />
-            </ExpandButton>
-          </Box>
-        </Box>
-      </CardContent>
-
-      {/* Expandable Content */}
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <CardContent sx={{ pt: 0 }}>
-          <Divider sx={{ my: 2 }} />
-          
-          {/* Parse and display highlight content */}
-          {highlight.content.split('\n').map((line, idx) => {
-            if (line.includes('Topic:')) {
-              return (
-                <Box key={idx} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" color="primary">🔬 Topic</Typography>
-                  <Typography>{line.replace('🔬 Topic:', '').trim()}</Typography>
-                </Box>
-              );
-            }
-            if (line.includes('Quote:')) {
-              return (
-                <Box key={idx} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" color="primary">✨ Quote</Typography>
-                  <Typography sx={{ 
-                    fontStyle: 'italic',
-                    borderLeft: '3px solid',
-                    borderColor: 'primary.main',
-                    pl: 2
-                  }}>
-                    {line.replace('✨ Quote:', '').trim()}
-                  </Typography>
-                </Box>
-              );
-            }
-            // ... similar handling for Insight, Takeaway, Context
-            return null;
-          })}
-
-          <Button
-            startIcon={<ArticleIcon />}
+            clickable
+            color="primary"
             variant="outlined"
-            onClick={() => setShowTranscript(true)}
-            sx={{ mt: 2 }}
-          >
-            Show Transcript Context
-          </Button>
-        </CardContent>
-      </Collapse>
+            onClick={() => {/* TODO: Add video link handler */}}
+          />
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+        
+        {/* Parse and display highlight content */}
+        {highlight.content.split('\n').map((line, idx) => {
+          if (line.match(/\[\d{2}:\d{2}:\d{2}/)) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  {line.trim()}
+                </Typography>
+              </Box>
+            );
+          }
+          if (line.includes('Topic:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary">🔬 Topic</Typography>
+                <Typography>{line.replace('🔬 Topic:', '').trim()}</Typography>
+              </Box>
+            );
+          }
+          if (line.includes('Quote:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary">✨ Quote</Typography>
+                <Typography sx={{ 
+                  fontStyle: 'italic',
+                  borderLeft: '3px solid',
+                  borderColor: 'primary.main',
+                  pl: 2
+                }}>
+                  {line.replace('✨ Quote:', '').trim()}
+                </Typography>
+              </Box>
+            );
+          }
+          if (line.includes('Insight:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary">💎 Insight</Typography>
+                <Typography>{line.replace('💎 Insight:', '').trim()}</Typography>
+              </Box>
+            );
+          }
+          if (line.includes('TAKEAWAY:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary">🎯 TAKEAWAY</Typography>
+                <Typography>{line.replace('🎯 TAKEAWAY:', '').trim()}</Typography>
+              </Box>
+            );
+          }
+          if (line.includes('CONTEXT:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary">📝 CONTEXT</Typography>
+                <Typography>{line.replace('📝 CONTEXT:', '').trim()}</Typography>
+              </Box>
+            );
+          }
+          return null;
+        })}
+
+        <Button
+          startIcon={<ArticleIcon />}
+          variant="outlined"
+          onClick={() => setShowTranscript(true)}
+          sx={{ mt: 2 }}
+        >
+          Show Transcript Context
+        </Button>
+      </CardContent>
 
       {/* Action Buttons */}
       <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
