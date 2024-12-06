@@ -17,6 +17,7 @@ from sqlalchemy.orm import relationship
 from .init_database import Base
 from .enums import ProcessingStatus, HighlightStatus
 from .schemas import Channel, Video, Highlight, Transcript
+from uuid import uuid4
 
 class Channel(Base):
     __tablename__ = 'channels'
@@ -48,7 +49,7 @@ class Video(Base):
         String, 
         CheckConstraint(f"processing_status IN {tuple(ProcessingStatus.__members__.values())}"),
         default=ProcessingStatus.PENDING.value,
-        nullable=False
+        nullable=True
     )
     url = Column(String)
     thumbnail_url = Column(String)
@@ -78,17 +79,8 @@ class Highlight(Base):
     __tablename__ = 'highlights'
     id = Column(String, primary_key=True, index=True)
     video_id = Column(String, ForeignKey('videos.id'))
-    time_start = Column(Integer)
-    time_end = Column(Integer)
-    topic = Column(Text)
-    quote = Column(Text)
-    insight = Column(Text)
-    takeaway = Column(Text)
-    context = Column(Text)
-    status = Column(String, CheckConstraint(f"status IN {tuple(HighlightStatus.__members__.values())}"))
-    comments = Column(Text)
-    reviewed_at = Column(DateTime)
-
+    content = Column(Text)
+    
     video = relationship("Video", back_populates="highlights")
 
     def to_dataclass(self) -> Highlight:
@@ -96,16 +88,7 @@ class Highlight(Base):
         return Highlight(
             id=self.id,
             video_id=self.video_id,
-            time_start=self.time_start,
-            time_end=self.time_end,
-            topic=self.topic,
-            quote=self.quote,
-            insight=self.insight,
-            takeaway=self.takeaway,
-            context=self.context,
-            status=self.status,
-            comments=self.comments,
-            reviewed_at=self.reviewed_at
+            content=self.content
         )
 
 class Transcript(Base):

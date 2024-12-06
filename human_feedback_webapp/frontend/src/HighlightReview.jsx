@@ -45,7 +45,6 @@ const HighlightReview = () => {
 
   const [rawTranscript, setRawTranscript] = useState('');
   const [processedTranscript, setProcessedTranscript] = useState('');
-  const [transcript, setTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -75,8 +74,10 @@ const HighlightReview = () => {
   const fetchTranscript = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/transcript`);
-      setRawTranscript(response.data.raw_content);
-      setProcessedTranscript(response.data.processed_content);
+      if (response.data) {
+        setRawTranscript(response.data.raw_transcript);
+        setProcessedTranscript(response.data.processed_transcript);
+      }
     } catch (error) {
       console.error('Error fetching transcript:', error);
     }
@@ -160,25 +161,11 @@ const HighlightReview = () => {
 
   if (!video) return <div>Loading...</div>;
 
-  if (processingStatus !== 'completed') {
-    return (
-      <Container>
-        <Typography variant="h4">{video.title}</Typography>
-        <Alert severity="warning">This video has not been processed yet.</Alert>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleProcessVideo}
-          disabled={isProcessing}
-        >
-          {isProcessing ? 'Processing...' : 'Process Video'}
-        </Button>
-      </Container>
-    );
-  }
+
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    
       {/* Video Title and Info */}
       <Typography variant="h4" gutterBottom>
         {video.title}
@@ -186,6 +173,17 @@ const HighlightReview = () => {
       <Typography variant="subtitle1" gutterBottom>
         Channel: {video.channel_id} • Duration: {formatDuration(video.duration)}
       </Typography>
+
+      {/* Process Button */}
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleProcessVideo}
+        disabled={isProcessing}
+        sx={{ mb: 2 }}
+      >
+        {isProcessing ? 'Processing...' : 'Process Video'}
+      </Button>
 
       <Grid container spacing={2} sx={{ mt: 2 }}>
         {/* Transcript Panel */}

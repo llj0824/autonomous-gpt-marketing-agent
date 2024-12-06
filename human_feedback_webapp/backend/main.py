@@ -105,29 +105,40 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
         logger.info(f"Setting video {video_id} status to PROCESSING")
         crud.update_video_processing_status(db, video_id, ProcessingStatus.PROCESSING)
         
-        # Fetch raw transcript
+        # 1. Fetch raw transcript
         logger.info(f"Fetching raw transcript for video {video_id}")
         raw_transcript = await youtube_service.fetch_raw_transcript(video_id)
+        if not raw_transcript:
+            raise Exception("Failed to fetch transcript from YouTube")
         logger.info(f"Successfully fetched raw transcript for video {video_id} (length: {len(raw_transcript)})")
 
-        # Process transcript using LLM_API_Utils
+        # 2. Process transcript
         logger.info(f"Starting parallel transcript processing for video {video_id}")
         processed_transcript = await llm_api_utils.process_transcript_in_parallel(raw_transcript)
+        if not processed_transcript:
+            raise Exception("Failed to process transcript")
         logger.info(f"Successfully processed transcript for video {video_id} (length: {len(processed_transcript)})")
         
+        # 3. Store transcript
         logger.info(f"Saving transcript to database for video {video_id}")
         crud.create_or_update_transcript(
-            db=db, 
-            video_id=video_id, 
+            db=db,
+            video_id=video_id,
             raw_transcript=raw_transcript,
             processed_transcript=processed_transcript
         )
         logger.info(f"Successfully saved transcript for video {video_id}")
         
-        # Generate highlights
+        # 4. Generate and store highlights
         logger.info(f"Starting highlight generation for video {video_id}")
-        await highlight_generator.generate_highlights(video_id, db)
-        logger.info(f"Successfully generated highlights for video {video_id}")
+        highlights = await llm_api_utils.generate_highlights(processed_transcript)
+        for highlight_data in highlights:
+            crud.create_highlight(
+                db=db,
+                video_id=video_id,
+                highlight_data=highlight_data
+            )
+        logger.info(f"Successfully generated and stored highlights for video {video_id}")
         
         # Update status to completed
         logger.info(f"Setting video {video_id} status to COMPLETED")
@@ -147,7 +158,7 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
             detail={
                 "error": str(e),
                 "type": type(e).__name__,
-                "traceback": f"{traceback.format_exc()}"
+                "traceback": traceback.format_exc()
             }
         )
 
@@ -205,9 +216,8 @@ def read_transcript(video_id: str, db: Session = Depends(get_db)):
     if not transcript:
         raise HTTPException(status_code=404, detail="Transcript not found")
     return {
-        "raw_transcript": transcript.raw_content,
-        "processed_transcript": transcript.processed_content,
-        "processing_status": transcript.processing_status
+        "raw_transcript": transcript.raw_transcript,
+        "processed_transcript": transcript.processed_transcript
     }
 
 if __name__ == "__main__":

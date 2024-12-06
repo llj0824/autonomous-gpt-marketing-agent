@@ -13,7 +13,10 @@ from config import Config
 
 class LLM_API_Utils:
     DEFAULT_PARTITIONS = 8
-    GPT_4o_LATEST = "chatgpt-4o-latest"
+    # GPT_4o_LATEST = "chatgpt-4o-latest"
+    GPT_4o = "gpt-4o-mini"
+
+    
     LINES_PER_PARTITION = 120  # Approximately 10 minutes per chunk (5s per line)
 
     def __init__(self):
@@ -150,7 +153,7 @@ Two sentence summary of highlight in viewpoint of the reader."""
     async def process_in_partitions(self,
                                     transcript: str,
                                     system_role: str,
-                                    model_name: str = GPT_4o_LATEST,
+                                    model_name: str = GPT_4o,
                                     max_tokens: int = 10000,
                                     temperature: float = 0.1,
                                     lines_per_partition: int = None) -> str:
@@ -173,7 +176,7 @@ Two sentence summary of highlight in viewpoint of the reader."""
         return "\n\n".join(results)
 
     async def process_transcript_in_parallel(self, transcript: str, 
-                                             model_name: str = GPT_4o_LATEST) -> str:
+                                             model_name: str = GPT_4o) -> str:
         """
         Process the transcript using the transcript system role.
         """
@@ -187,7 +190,7 @@ Two sentence summary of highlight in viewpoint of the reader."""
 
     async def generate_highlights(self, 
                                   processed_transcript: str, 
-                                  model_name: str = GPT_4o_LATEST,
+                                  model_name: str = GPT_4o,
                                   max_tokens: int = 10000,
                                   temperature: float = 0.4) -> str:
         """

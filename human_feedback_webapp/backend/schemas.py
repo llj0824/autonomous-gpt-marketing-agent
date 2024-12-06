@@ -18,37 +18,18 @@ from .enums import ProcessingStatus
 class HighlightBase(BaseModel):
     id: str
     video_id: str
-    time_start: int
-    time_end: int
-    topic: Optional[str]
-    quote: Optional[str]
-    insight: Optional[str]
-    takeaway: Optional[str]
-    context: Optional[str]
-    status: Optional[str]
-    comments: Optional[str]
+    content: str
 
-class HighlightCreate(HighlightBase):
+class HighlightCreate(BaseModel):
     video_id: str
+    content: str
 
 class HighlightUpdate(BaseModel):
-    topic: Optional[str]
-    quote: Optional[str]
-    insight: Optional[str]
-    takeaway: Optional[str]
-    context: Optional[str]
-    status: Optional[str]
-    comments: Optional[str]
+    content: Optional[str]
 
 class Highlight(HighlightBase):
-    id: str
-    video_id: str
-    status: str
-    comments: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Video Schemas
 class VideoBase(BaseModel):
@@ -64,12 +45,12 @@ class VideoCreate(VideoBase):
 class Video(VideoBase):
     id: str
     channel_id: str
+    processing_status: Optional[str] = None
     processed_at: Optional[datetime] = None
     highlights: List[Highlight] = []
 
     class Config:
         from_attributes = True
-
 
 # Channel Schemas
 class ChannelBase(BaseModel):
@@ -92,7 +73,6 @@ class TranscriptBase(BaseModel):
     video_id: str
     raw_transcript: str
     processed_transcript: Optional[str] = None
-    processing_status: ProcessingStatus
     created_at: datetime
     updated_at: datetime
 

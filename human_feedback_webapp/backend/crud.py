@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from .youtube_service import YoutubeService
 from .enums import ProcessingStatus
 import logging
+from uuid import uuid4
 
 
 # Add at the top of the file, after the imports
@@ -115,8 +116,21 @@ def create_video(db: Session, video_metadata: dict):
 def get_highlight(db: Session, highlight_id: str):
     return db.query(models.Highlight).filter(models.Highlight.id == highlight_id).first()
 
-def create_highlight(db: Session, video_id: str, highlight_data: dict):
-    db_highlight = models.Highlight(**highlight_data, video_id=video_id)
+def create_highlight(db: Session, video_id: str, highlight_data: str):
+    """
+    Creates a new highlight entry with simplified fields
+    
+    Args:
+        db: Database session
+        video_id: ID of the video this highlight belongs to
+        highlight_data: Text content of the highlight
+    """
+    db_highlight = models.Highlight(
+        id=str(uuid4()),
+        video_id=video_id,
+        content=highlight_data
+    )
+    
     db.add(db_highlight)
     db.commit()
     db.refresh(db_highlight)
@@ -151,9 +165,15 @@ def parse_duration(duration_str: str) -> int:
 def get_transcript(db: Session, video_id: str):
     db_transcript = db.query(models.Transcript).filter(models.Transcript.video_id == video_id).first()
     if db_transcript:
-        return schemas.Transcript(id=db_transcript.id, video_id=video_id, transcript=db_transcript.content)
-    else:
-        return None
+        return schemas.Transcript(
+            id=db_transcript.id,
+            video_id=video_id,
+            raw_transcript=db_transcript.raw_transcript,
+            processed_transcript=db_transcript.processed_transcript,
+            created_at=db_transcript.created_at,
+            updated_at=db_transcript.updated_at
+        )
+    return None
 
 def create_or_update_transcript(db: Session, video_id: str, raw_transcript: str, processed_transcript: str):
     """
