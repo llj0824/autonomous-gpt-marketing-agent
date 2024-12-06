@@ -7,6 +7,7 @@ import re
 import json
 import logging
 from pathlib import Path
+from yt_dlp import YoutubeDL
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,6 @@ class CaptionTrack:
     name: str
     language_code: str
 
-# Move constants to module level
 TRANSCRIPT_SECTION = "*** Transcript ***"
 CONTEXT_SECTION = "*** Background Context ***"
 
@@ -80,15 +80,7 @@ class YoutubeService:
     )
 
     async def fetch_channel_data(self, channel_handle: str) -> Dict[str, Any]:
-        """
-        Fetches channel metadata and recent videos.
-        
-        Args:
-            channel_handle: Channel handle (e.g. "@Bankless")
-            
-        Returns:
-            Dictionary containing channel metadata and videos
-        """
+        # Original code unchanged
         channel_url = f"https://www.youtube.com/{channel_handle}/videos"
         
         async with httpx.AsyncClient() as client:
@@ -96,14 +88,11 @@ class YoutubeService:
             if not response.is_success:
                 raise YouTubeError(f"Failed to fetch channel: {response.status_code}")
 
-            # Extract ytInitialData
             match = re.search(r'var\s+ytInitialData\s*=\s*({.+?});</script>', response.text)
             if not match:
                 raise YouTubeError('Channel data not found')
             
             data = json.loads(match.group(1))
-            
-            # Extract channel metadata
             channel_metadata = data['metadata']['channelMetadataRenderer']
             metadata = {
                 'title': channel_metadata['title'],
@@ -111,7 +100,6 @@ class YoutubeService:
                 'thumbnailUrl': channel_metadata['avatar']['thumbnails'][-1]['url']
             }
             
-            # Extract videos
             videos = []
             try:
                 tabs = data['contents']['twoColumnBrowseResultsRenderer']['tabs']
@@ -125,7 +113,6 @@ class YoutubeService:
                 for item in video_items:
                     if 'richItemRenderer' not in item:
                         continue
-                        
                     video = item['richItemRenderer']['content']['videoRenderer']
                     videos.append({
                         'videoId': video['videoId'],
@@ -143,67 +130,76 @@ class YoutubeService:
                 'videos': videos
             }
 
-    async def fetch_transcript(self, video_id_or_url: str, max_retries: int = 3) -> str:
-        """
-        Fetches and parses the transcript for a YouTube video.
-        
-        Args:
-            video_id_or_url: Video ID or URL
-            max_retries: Number of retry attempts
-            
-        Returns:
-            Formatted transcript string
-        """
+    async def fetch_raw_transcript(self, video_id_or_url: str, max_retries: int = 3) -> Dict[str, Any]:
         video_id = self.extract_video_id(video_id_or_url)
         if not video_id:
             raise YouTubeError('Invalid YouTube video ID or URL')
 
-        async with httpx.AsyncClient() as client:
+        # Configure yt-dlp options
+        # We specify subtitles format as TTML for easier XML parsing (like original code).
+        ydl_opts = {
+            'skip_download': True,
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'subtitleslangs': ['en'],
+            'subtitlesformat': 'ttml',
+            'nocheckcertificate': True,
+            'cookiesfrombrowser': None,  # We'll rely on your cookies.json if needed
+            # If you want to incorporate cookies, convert cookies.json to Netscape format 
+            # and specify 'cookies': 'path/to/cookies.txt'
+        }
+
+        # Attempt extraction
         for attempt in range(max_retries):
             try:
-                # Fetch video page
-                response = await client.get(f"https://www.youtube.com/watch?v={video_id}")
-                response.raise_for_status()
+                with YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
                 
-                # Extract player data
-                match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;', response.text)
-                if not match:
-                    raise YouTubeError('Could not find player data')
+                # Info should contain 'subtitles' or 'automatic_captions'
+                subtitles = info.get('subtitles') or {}
+                automatic_captions = info.get('automatic_captions') or {}
                 
-                player_data = json.loads(match.group(1))
-                
-                # Get caption tracks
-                caption_tracks = (player_data.get('captions', {})
-                                .get('playerCaptionsTracklistRenderer', {})
-                                .get('captionTracks', []))
-                
-                if not caption_tracks:
+                # Determine which captions to use
+                # Prefer normal subtitles, fallback to automatic if no normal subtitles found
+                chosen_captions = subtitles if subtitles else automatic_captions
+                if not chosen_captions:
                     raise YouTubeError('NO_CAPTIONS')
+
+                # Pick the first available track
+                # Typically keys are language codes like 'en'
+                lang = next(iter(chosen_captions.keys()))
+                track = chosen_captions[lang][0]  # First track in that language
                 
-                # Fetch transcript XML
-                transcript_url = caption_tracks[0]['baseUrl']
-                transcript_response = await client.get(transcript_url)
-                transcript_response.raise_for_status()
+                # track['url'] points to the TTML subtitle file
+                async with httpx.AsyncClient() as client:
+                    transcript_response = await client.get(track['url'])
+                    transcript_response.raise_for_status()
+                    xml_text = transcript_response.text
+
+                # Parse transcript XML
+                transcript = self.parse_transcript_xml(xml_text)
                 
-                # Parse transcript
-                transcript = self.parse_transcript_xml(transcript_response.text)
-                
-                # Add video context
-                video_details = player_data.get('videoDetails', {})
-                context = self.create_context_block(video_details)
-                
-                return {
-                    'raw_content': transcript_response.text,
-                    'processed_content': f"{context}\n{TRANSCRIPT_SECTION}\n{transcript}"
+                # Create context block from info’s metadata
+                # Adapted from original code: we have 'title' and 'description' from info
+                video_details = {
+                    'title': info.get('title', 'Unknown'),
+                    # Using 'description' directly as a stand-in for 'shortDescription'
+                    'shortDescription': info.get('description', '')
                 }
-            
+                
+                context = self.create_context_block(video_details)
+                raw_transcript = f"{context}\n{TRANSCRIPT_SECTION}\n{transcript}"
+                return raw_transcript
+
             except YouTubeError as e:
                 if str(e) == 'NO_CAPTIONS':
+                    # No retries needed if no captions available
                     raise YouTubeError('This video does not have captions available for automatic retrieval.')
+                
                 if attempt == max_retries - 1:
                     raise YouTubeError(f'Failed to fetch transcript: {str(e)}')
+                
                 await asyncio.sleep(1)
-
 
     @staticmethod
     def parse_transcript_xml(xml_text: str) -> str:
@@ -213,16 +209,18 @@ class YoutubeService:
 
         for line in lines:
             # Extract timestamp
-            start = float(re.search(r'start="([\d.]+)"', line).group(1))
-            
+            start_match = re.search(r'start="([\d.]+)"', line)
+            if not start_match:
+                continue
+            start = float(start_match.group(1))
+
             # Extract and clean text
             text = re.sub(r'<.+?>', '', line).strip()
-            
+
             # Format timestamp
             minutes = int(start // 60)
             seconds = int(start % 60)
             timestamp = f"[{minutes}:{seconds:02d}]"
-
             formatted_lines.append(f"{timestamp} {text}")
 
         return '\n'.join(formatted_lines)
@@ -230,11 +228,9 @@ class YoutubeService:
     @staticmethod
     def extract_video_id(video_id_or_url):
         """Extracts the YouTube video ID from a given URL or returns the ID if provided."""
-        # Check if input is already a video ID
         if re.match(r'^[a-zA-Z0-9_-]{11}$', video_id_or_url):
             return video_id_or_url
 
-        # Extract from URL
         url_match = re.search(
             r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
             video_id_or_url
@@ -244,15 +240,18 @@ class YoutubeService:
     @staticmethod
     def create_context_block(video_details):
         """Parses and filters the video description to extract relevant content."""
-        if not video_details or 'shortDescription' not in video_details:
-            return (f"{CONTEXT_SECTION}\n"
-                f"Title: Unknown\n"
-                f"Description: No description available\n")
-
-        # Get first paragraph
+        title = video_details.get('title', 'Unknown')
         description = video_details.get('shortDescription', '')
-        first_paragraph = description.split('\n\n')[0]
-
+        if not description:
+            return (
+                f"{CONTEXT_SECTION}\n"
+                f"Title: {title}\n"
+                f"Description: No description available\n"
+            )
+        
+        # Get first paragraph of description
+        first_paragraph = description.split('\n\n')[0].strip()
+        
         # Extract timestamp lines
         timestamps = '\n'.join(
             line for line in description.split('\n')
@@ -261,7 +260,7 @@ class YoutubeService:
         
         return (
             f"{CONTEXT_SECTION}\n"
-            f"Title: {video_details.get('title', 'Unknown')}\n"
+            f"Title: {title}\n"
             f"Description: {first_paragraph}\n\n"
             f"Timestamps:\n{timestamps}\n"
         )

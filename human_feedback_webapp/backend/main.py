@@ -99,8 +99,13 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
         # Update status to processing
         crud.update_video_processing_status(db, video_id, ProcessingStatus.PROCESSING)
         
-        # Fetch and store transcript
-        transcript = await youtube_service.fetch_transcript(video_id)
+        # Fetch raw transcript
+        raw_transcript = await youtube_service.fetch_raw_transcript(video_id)
+
+        # Process transcript
+        
+
+        
         crud.create_or_update_transcript(db, video_id, transcript)
         
         # Generate highlights
