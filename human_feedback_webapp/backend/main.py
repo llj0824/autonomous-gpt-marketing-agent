@@ -95,10 +95,6 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
         logger.warning(f"Video not found with id: {video_id}")
         raise HTTPException(status_code=404, detail="Video not found")
         
-    # Check if already processing
-    if video.processing_status == ProcessingStatus.PROCESSING:
-        logger.warning(f"Video {video_id} is already being processed")
-        raise HTTPException(status_code=400, detail="Video is already being processed")
         
     try:
         # Update status to processing

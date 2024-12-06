@@ -200,6 +200,7 @@ def create_or_update_transcript(db: Session, video_id: str, raw_transcript: str,
             db_transcript = models.Transcript(
                 video_id=video_id,
                 raw_transcript=raw_transcript,
+                processed_transcript = processed_transcript,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc)
             )

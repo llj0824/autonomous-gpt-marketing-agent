@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Optional
 import sys
 from pathlib import Path
+import re
 
 # Add root directory to Python path
 root_dir = Path(__file__).parent.parent.parent
@@ -15,9 +16,7 @@ class LLM_API_Utils:
     DEFAULT_PARTITIONS = 8
     # GPT_4o_LATEST = "chatgpt-4o-latest"
     GPT_4o = "gpt-4o-mini"
-
-    
-    LINES_PER_PARTITION = 120  # Approximately 10 minutes per chunk (5s per line)
+    LINES_PER_PARTITION = 60  # Approximately 5 minutes per chunk (5s per line)
 
     def __init__(self):
         self.config = Config()
@@ -134,13 +133,11 @@ Two sentence summary of highlight in viewpoint of the reader."""
                 data = await response.json()
                 return data["choices"][0]["message"]["content"].strip()
             
-    def _split_transcript_for_processing(self, transcript: str, lines_per_partition: int = None) -> List[str]:
+    def _split_transcript_for_processing(self, transcript: str, lines_per_partition: int = LINES_PER_PARTITION) -> List[str]:
         """
         Partition the transcript into chunks of ~10 minutes each by line count.
         Default: LINES_PER_PARTITION = 120
         """
-        if lines_per_partition is None:
-            lines_per_partition = self.LINES_PER_PARTITION
 
         lines = transcript.strip().split("\n")
         partitions = []
@@ -155,13 +152,12 @@ Two sentence summary of highlight in viewpoint of the reader."""
                                     system_role: str,
                                     model_name: str = GPT_4o,
                                     max_tokens: int = 10000,
-                                    temperature: float = 0.1,
-                                    lines_per_partition: int = None) -> str:
+                                    temperature: float = 0.1) -> List[str]:
         """
         A common method to process the transcript in partitions.
         This can be used both for transcript editing and highlight generation.
         """
-        parts = self._split_transcript_for_processing(transcript, lines_per_partition)
+        parts = self._split_transcript_for_processing(transcript)
         
         tasks = [
             self.call_gpt4(
@@ -172,35 +168,48 @@ Two sentence summary of highlight in viewpoint of the reader."""
                 temperature=temperature
             ) for part in parts
         ]
-        results = await asyncio.gather(*tasks)
-        return "\n\n".join(results)
+        return await asyncio.gather(*tasks)
 
     async def process_transcript_in_parallel(self, transcript: str, 
                                              model_name: str = GPT_4o) -> str:
         """
         Process the transcript using the transcript system role.
+        Returns a single joined string since this is for transcript processing.
         """
-        return await self.process_in_partitions(
+        results = await self.process_in_partitions(
             transcript=transcript,
             system_role=self.llm_system_role,
             model_name=model_name,
             max_tokens=10000,
             temperature=0.1
         )
+        return "\n\n".join(results)
 
     async def generate_highlights(self, 
-                                  processed_transcript: str, 
-                                  model_name: str = GPT_4o,
-                                  max_tokens: int = 10000,
-                                  temperature: float = 0.4) -> str:
+                                processed_transcript: str, 
+                                model_name: str = GPT_4o,
+                                max_tokens: int = 10000,
+                                temperature: float = 0.4) -> List[str]:
         """
         Generate highlights from a processed transcript using the highlights system role.
+        Returns a list of individual highlights.
         """
-        # You can adjust lines_per_partition if you need smaller/bigger chunks for highlights.
-        return await self.process_in_partitions(
+        # Get the raw highlights from the LLM
+        raw_highlights = await self.process_in_partitions(
             transcript=processed_transcript,
             system_role=self.llm_highlights_system_role,
             model_name=model_name,
             max_tokens=max_tokens,
             temperature=temperature
         )
+        
+        # Split each raw highlight into individual highlights
+        individual_highlights = []
+        for raw_highlight in raw_highlights:
+            # Match both [MM:SS] and [HH:MM:SS] formats with flexible spacing
+            timestamp_pattern = r'(?=\[(?:\d{2}:)?\d{2}:\d{2}\s*->\s*(?:\d{2}:)?\d{2}:\d{2}\])'
+            segments = re.split(timestamp_pattern, raw_highlight)
+            # Filter out empty segments and add non-empty ones to the list
+            individual_highlights.extend([seg.strip() for seg in segments if seg.strip()])
+        
+        return individual_highlights

@@ -164,12 +164,23 @@ class YoutubeService:
                 chosen_captions = subtitles if subtitles else automatic_captions
                 if not chosen_captions:
                     raise YouTubeError('NO_CAPTIONS')
-
-                # Pick the first available track
-                # Typically keys are language codes like 'en'
-                lang = next(iter(chosen_captions.keys()))
-                track = chosen_captions[lang][0]  # First track in that language
-                
+                # Use English captions ("en-orig", else "en"). If none exists fail with message saying captions don't exist.
+                if 'en-orig' in chosen_captions:
+                    lang = 'en-orig'
+                elif 'en' in chosen_captions:
+                    lang = 'en'
+                else:
+                    raise YouTubeError('No English captions available for this video.')
+                # Example TTML format:
+                # <div>
+                #     <p begin="00:00:03.800" end="00:00:07.279">welcome to the final Talk of the bank</p>
+                #     <p begin="00:00:05.520" end="00:00:08.599">list Summit which was a series of talks</p>
+                #     ...
+                # </div>
+                track = next(
+                    (t for t in chosen_captions[lang] if t.get('ext') == 'ttml'), 
+                    chosen_captions[lang][0]
+                )
                 # track['url'] points to the TTML subtitle file
                 async with httpx.AsyncClient() as client:
                     transcript_response = await client.get(track['url'])
@@ -203,25 +214,41 @@ class YoutubeService:
 
     @staticmethod
     def parse_transcript_xml(xml_text: str) -> str:
-        """Converts XML transcript to readable text with timestamps."""
-        lines = re.findall(r'<text.+?>.+?</text>', xml_text) or []
+        """Converts TTML transcript to readable text with timestamps."""
+        # Find all <p> elements with begin/end timestamps
+        lines = re.findall(r'<p\s+begin="([^"]+)"\s+end="([^"]+)"[^>]*>(.*?)</p>', xml_text) or []
         formatted_lines = []
 
-        for line in lines:
-            # Extract timestamp
-            start_match = re.search(r'start="([\d.]+)"', line)
-            if not start_match:
+        def parse_timestamp(ts: str) -> float:
+            """Convert timestamp from HH:MM:SS.mmm or MM:SS.mmm to seconds"""
+            parts = ts.split(':')
+            if len(parts) == 3:  # HH:MM:SS.mmm
+                h, m, s = parts
+                return float(h) * 3600 + float(m) * 60 + float(s)
+            elif len(parts) == 2:  # MM:SS.mmm
+                m, s = parts
+                return float(m) * 60 + float(s)
+            else:
+                raise ValueError(f"Invalid timestamp format: {ts}")
+
+        for begin, end, text in lines:
+            try:
+                start = parse_timestamp(begin)
+                end = parse_timestamp(end)
+
+                # Clean text - remove any remaining XML tags and normalize whitespace
+                text = re.sub(r'<[^>]+>', '', text)
+                text = ' '.join(text.split())
+
+                # Format timestamp range for LLM processing
+                start_min, start_sec = divmod(int(start), 60)
+                end_min, end_sec = divmod(int(end), 60)
+                timestamp = f"[{start_min:02d}:{start_sec:02d} -> {end_min:02d}:{end_sec:02d}]"
+                
+                formatted_lines.append(f"{timestamp} {text}")
+            except ValueError as e:
+                print(f"Warning: Failed to parse timestamp - {e}")
                 continue
-            start = float(start_match.group(1))
-
-            # Extract and clean text
-            text = re.sub(r'<.+?>', '', line).strip()
-
-            # Format timestamp
-            minutes = int(start // 60)
-            seconds = int(start % 60)
-            timestamp = f"[{minutes}:{seconds:02d}]"
-            formatted_lines.append(f"{timestamp} {text}")
 
         return '\n'.join(formatted_lines)
 
