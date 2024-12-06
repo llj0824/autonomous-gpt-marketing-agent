@@ -3,207 +3,161 @@
  * 
  * Interface for reviewing and moderating generated video highlights.
  * Features:
- * - Video playback at highlight timestamps
+ * - Split-screen layout with transcript on the left
+ * - Stack of highlight cards on the right
  * - Approve/reject highlights
- * - Add reviewer comments
- * - Keyboard shortcuts for efficient review
+ * - Both panels are independently scrollable
+ * - Timestamps to help correlate content
  * 
  * Communicates with backend API for highlight status updates.
  */
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Container,
-  Paper,
+  Grid,
   Typography,
   Button,
-  TextField,
-  Box,
-  IconButton
+  Paper
 } from '@mui/material';
-import {
-  ThumbUp as ApproveIcon,
-  ThumbDown as RejectIcon,
-  NavigateNext,
-  NavigateBefore
-} from '@mui/icons-material';
 import axios from 'axios';
+
+import TranscriptPanel from './TranscriptPanel';
+import HighlightCard from './HighlightCard';
+import { formatDuration } from './utils';
+
+const API_BASE_URL = 'http://localhost:8000';
 
 const HighlightReview = () => {
   const { videoId } = useParams();
+
   const [video, setVideo] = useState(null);
-  const [highlight, setHighlight] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [rawTranscript, setRawTranscript] = useState('');
+  const [processedTranscript, setProcessedTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
 
   useEffect(() => {
-    fetchVideoData();
-    fetchHighlights();
+    // Load all data when videoId changes
+    fetchAllData();
   }, [videoId]);
 
-  useEffect(() => {
-    const handleKeyPress = (event) => {
-      switch(event.key.toLowerCase()) {
-        case 'a':
-          handleApprove();
-          break;
-        case 'r':
-          handleReject();
-          break;
-        case 'arrowright':
-          handleNext();
-          break;
-        case 'arrowleft':
-          handlePrevious();
-          break;
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentIndex, highlights]);
+  const fetchAllData = async () => {
+    await fetchVideoData();
+    await fetchTranscript();
+    await fetchHighlights();
+  };
 
   const fetchVideoData = async () => {
     try {
-      const response = await axios.get(`/videos/${videoId}`);
+      const response = await axios.get(`${API_BASE_URL}/videos/${videoId}`);
       setVideo(response.data);
     } catch (error) {
       console.error('Error fetching video:', error);
     }
   };
 
+  const fetchTranscript = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/transcript`);
+      if (response.data) {
+        setRawTranscript(response.data.raw_transcript);
+        setProcessedTranscript(response.data.processed_transcript);
+      }
+    } catch (error) {
+      console.error('Error fetching transcript:', error);
+    }
+  };
+
   const fetchHighlights = async () => {
     try {
-      const response = await axios.get(`/videos/${videoId}/highlights`);
+      const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/highlights`);
       setHighlights(response.data);
-      setHighlight(response.data[0]);
     } catch (error) {
       console.error('Error fetching highlights:', error);
     }
   };
 
-  const handleApprove = async () => {
+  const handleProcessVideo = async () => {
+    setIsProcessing(true);
     try {
-      await axios.put(`/highlights/${highlight.id}`, {
-        ...highlight,
-        status: 'approved'
-      });
-      handleNext();
+      await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
+      // Refresh video data after processing
+      await fetchVideoData();
+    } catch (error) {
+      console.error('Error processing video:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleApprove = async (highlightId) => {
+    try {
+      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'approved' });
+      setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
     } catch (error) {
       console.error('Error approving highlight:', error);
     }
   };
 
-  const handleReject = async () => {
+  const handleReject = async (highlightId) => {
     try {
-      await axios.put(`/highlights/${highlight.id}`, {
-        ...highlight,
-        status: 'rejected'
-      });
-      handleNext();
+      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'rejected' });
+      setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
     } catch (error) {
       console.error('Error rejecting highlight:', error);
     }
   };
 
-  const handleNext = () => {
-    if (currentIndex < highlights.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setHighlight(highlights[currentIndex + 1]);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setHighlight(highlights[currentIndex - 1]);
-    }
-  };
-
-  if (!video || !highlight) return <div>Loading...</div>;
+  if (!video) return <div>Loading...</div>;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          {video.title}
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
-          Highlight {currentIndex + 1} of {highlights.length}
-        </Typography>
+      <Typography variant="h4" gutterBottom>
+        {video.title}
+      </Typography>
+      <Typography variant="subtitle1" gutterBottom>
+        Channel: {video.channel_id} • Duration: {formatDuration(video.duration)}
+      </Typography>
 
-        {/* Video Player */}
-        <Box sx={{ my: 2 }}>
-          <iframe
-            width="100%"
-            height="400"
-            src={`https://www.youtube.com/embed/${videoId}?start=${highlight.time_start}`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleProcessVideo}
+        disabled={isProcessing}
+        sx={{ mb: 2 }}
+      >
+        {isProcessing ? 'Processing...' : 'Process Video'}
+      </Button>
+
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={6}>
+          <TranscriptPanel 
+            processedTranscript={processedTranscript}
+            rawTranscript={rawTranscript}
           />
-        </Box>
-
-        {/* Highlight Details */}
-        <Box sx={{ my: 2 }}>
-          <TextField
-            fullWidth
-            label="Quote"
-            multiline
-            rows={4}
-            value={highlight.quote}
-            onChange={(e) => setHighlight({ ...highlight, quote: e.target.value })}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Comments"
-            multiline
-            rows={2}
-            value={highlight.comments || ''}
-            onChange={(e) => setHighlight({ ...highlight, comments: e.target.value })}
-            margin="normal"
-          />
-        </Box>
-
-        {/* Actions */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <IconButton onClick={handlePrevious} disabled={currentIndex === 0}>
-            <NavigateBefore />
-          </IconButton>
-          
-          <Box>
-            <Button
-              startIcon={<ApproveIcon />}
-              variant="contained"
-              color="success"
-              onClick={handleApprove}
-              sx={{ mr: 1 }}
-            >
-              Approve (A)
-            </Button>
-            <Button
-              startIcon={<RejectIcon />}
-              variant="contained"
-              color="error"
-              onClick={handleReject}
-            >
-              Reject (R)
-            </Button>
-          </Box>
-
-          <IconButton 
-            onClick={handleNext}
-            disabled={currentIndex === highlights.length - 1}
-          >
-            <NavigateNext />
-          </IconButton>
-        </Box>
-      </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '75vh', overflowY: 'auto' }}>
+            <Typography variant="h6" gutterBottom>
+              Highlights ({highlights.length} remaining)
+            </Typography>
+            {highlights.length === 0 ? (
+              <Typography variant="body1">All highlights have been reviewed.</Typography>
+            ) : (
+              highlights.map((highlight, index) => (
+                <HighlightCard
+                  key={highlight.id}
+                  highlight={highlight}
+                  index={index}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+              ))
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };

@@ -2,6 +2,7 @@
 fastapi>=0.104.0
 uvicorn>=0.24.0
 python-multipart>=0.0.6
+httpx
 
 # Database
 sqlalchemy>=2.0.0
@@ -12,6 +13,7 @@ youtube-transcript-api>=0.6.1
 google-api-python-client>=2.108.0
 google-auth-httplib2>=0.1.1
 google-auth-oauthlib>=1.1.0
+yt-dlp>=2023.12.30
 
 # Async support
 aiohttp>=3.9.0

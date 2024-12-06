@@ -2,7 +2,7 @@
 Pydantic Schemas
 
 This module defines the Pydantic models used for:
-- Request/response validation
+- API Request/response validation
 - Data serialization/deserialization
 - API documentation
 
@@ -12,42 +12,24 @@ These schemas mirror the database models but are specifically for API interactio
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
+from .enums import ProcessingStatus
 
 # Highlight Schemas
 class HighlightBase(BaseModel):
     id: str
     video_id: str
-    time_start: int
-    time_end: int
-    topic: Optional[str]
-    quote: Optional[str]
-    insight: Optional[str]
-    takeaway: Optional[str]
-    context: Optional[str]
-    status: Optional[str]
-    comments: Optional[str]
+    content: str
 
-class HighlightCreate(HighlightBase):
+class HighlightCreate(BaseModel):
     video_id: str
+    content: str
 
 class HighlightUpdate(BaseModel):
-    topic: Optional[str]
-    quote: Optional[str]
-    insight: Optional[str]
-    takeaway: Optional[str]
-    context: Optional[str]
-    status: Optional[str]
-    comments: Optional[str]
+    content: Optional[str]
 
 class Highlight(HighlightBase):
-    id: str
-    video_id: str
-    status: str
-    comments: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Video Schemas
 class VideoBase(BaseModel):
@@ -63,12 +45,12 @@ class VideoCreate(VideoBase):
 class Video(VideoBase):
     id: str
     channel_id: str
+    processing_status: Optional[str] = None
     processed_at: Optional[datetime] = None
     highlights: List[Highlight] = []
 
     class Config:
         from_attributes = True
-
 
 # Channel Schemas
 class ChannelBase(BaseModel):
@@ -82,6 +64,24 @@ class Channel(ChannelBase):
     id: str
     last_checked: datetime
     videos: List[Video] = []
+
+    class Config:
+        from_attributes = True
+
+# Add these new schemas
+class TranscriptBase(BaseModel):
+    video_id: str
+    raw_transcript: str
+    processed_transcript: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class TranscriptCreate(BaseModel):
+    video_id: str
+    raw_transcript: str
+
+class Transcript(TranscriptBase):
+    id: int
 
     class Config:
         from_attributes = True

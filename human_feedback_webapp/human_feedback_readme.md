@@ -1,73 +1,131 @@
-## Running the Application
+# Human Feedback Web Application
 
-### Prerequisites
-- Python 3.8 or higher
-- Node.js 14 or higher
-- npm 6 or higher
+## Table of Contents
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Installation](#installation)
+- [Usage Guide](#usage-guide)
+- [Development Guide](#development-guide)
+- [Technical Components](#technical-components)
+- [Testing](#testing)
+
+## Overview
+The Human Feedback Web Application helps review and improve autonomously generated highlights from YouTube videos. It's designed to:
+- Review highlights extracted from long-form YouTube videos
+- Collect human feedback on highlight quality
+- Train the autonomous system to better identify engaging content
+- Prepare approved content for social media publication
+
+## System Architecture
+```mermaid
+graph LR
+    A[YouTube Videos] --> B[Transcription]
+    B --> C[AI Processing]
+    C --> D[Human Review]
+    D --> E[Social Media Posts]
+    D --> F[AI Training Feedback]
+```
+
+### Process Flow
+1. **Content Sourcing**: Import videos from selected YouTube channels
+2. **Processing Pipeline**:
+   - Extract video transcripts
+   - Clean and polish transcripts using AI
+   - Generate highlight suggestions
+3. **Review System**:
+   - Human reviewers approve/reject highlights
+   - Feedback collected for AI improvement
+4. **Publication**: Approved highlights prepared for social media
+
+## Installation
 
 ### Backend Setup
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-   ```
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
 
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-3. Initialize the database:
-   ```bash
-   python backend/init_database.py
-   ```
+# Initialize database
+python backend/init_database.py
 
-4. Start the FastAPI server, # Run at human_feedback_webapp folder level.
-   ```bash
-   uvicorn backend.main:app --reload
-   ```
-   The backend will be available at http://localhost:8000
+# Start server (from human_feedback_webapp folder)
+uvicorn backend.main:app --reload
+```
 
 ### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+```bash
+cd frontend
+npm install
+npm start
+```
 
-2. Install Node.js dependencies:
-   ```bash
-   npm install
-   ```
+## Usage Guide
 
-3. Start the development server:
-   ```bash
-   npm start
-   ```
-   The application will be available at http://localhost:3000
+### Getting Started
+1. Access the application at http://localhost:3000
+2. Add YouTube channels in the Dashboard
+3. Review generated highlights from the Video Queue
 
-### Using the Application
-1. Open your browser and navigate to http://localhost:3000
-2. Add YouTube channels to monitor using the Channel Management section
-3. Process videos will appear in the Video Queue
-4. Click on a video to start reviewing its highlights
-5. Use keyboard shortcuts for efficient review:
-   - 'A' to approve a highlight
-   - 'R' to reject a highlight
-   - Left/Right arrow keys to navigate between highlights
+### Review Interface
+- Split-screen layout:
+  - Left: Full video transcript
+  - Right: Highlight cards for review
+- Keyboard shortcuts:
+  - `A` - Approve highlight
+  - `R` - Reject highlight
+  - `←/→` - Navigate highlights
 
-## Development
-- Backend API documentation is available at http://localhost:8000/docs
-- The SQLite database is located at `data/app.db`
-- Frontend source code is in the `frontend/src` directory
+## Development Guide
 
-### Run all tests
+### Key Resources
+- API documentation: http://localhost:8000/docs
+- Database location: `data/app.db`
+- Frontend code: `frontend/src/`
+
+### Main Components
+
+#### Dashboard (`Dashboard.jsx`)
+- Channel management interface
+- Video queue monitoring
+- Processing status tracking
+
+#### Highlight Review (`HighlightReview.jsx`)
+- Split-screen review interface
+- Approval/rejection functionality
+- Progress tracking
+
+## Technical Components
+
+### AI Integration
+The system uses AI (ChatGPT) for:
+- Transcript enhancement
+- Highlight generation
+- Learning from human feedback
+
+### Feedback System
+- Records reviewer decisions
+- Analyzes rejection patterns
+- Improves AI highlight generation
+- Maintains quality control
+
+## Testing
+```bash
+# Run all tests
 pytest
 
-### Run this specific test file
+# Run specific test file
 pytest human_feedback_webapp/backend/tests/test_youtube_service.py
 
-### Run with more detailed output (-v for verbose)
+# Verbose output
 pytest -v human_feedback_webapp/backend/tests/test_youtube_service.py
 
-### Run with print statement output (-s flag)
+# Include print statements
 pytest -v -s human_feedback_webapp/backend/tests/test_youtube_service.py
+```
+
+---
+
+**Note**: This application requires both backend (FastAPI) and frontend (React) servers running simultaneously. The backend handles data processing and storage, while the frontend provides the user interface.
