@@ -20,7 +20,7 @@ const TranscriptPanel = ({ processedTranscript, rawTranscript }) => {
           <Tab label="Raw" value="1" />
         </TabList>
 
-        <TabPanel value="0">
+        <TabPanel value="0" sx={{ '& p': { marginBottom: '0.5em' } }}>
           {formatTranscript(processedTranscript)}
         </TabPanel>
         <TabPanel value="1">

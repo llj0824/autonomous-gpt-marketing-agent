@@ -25,6 +25,8 @@ import axios from 'axios';
 import TranscriptPanel from './TranscriptPanel';
 import HighlightCard from './HighlightCard';
 import { formatDuration } from './utils';
+import { CircularProgress } from '@mui/material';
+
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -82,8 +84,8 @@ const HighlightReview = () => {
     setIsProcessing(true);
     try {
       await axios.post(`${API_BASE_URL}/videos/${videoId}/process`);
-      // Refresh video data after processing
-      await fetchVideoData();
+      // Refresh all data after processing
+      await fetchAllData();
     } catch (error) {
       console.error('Error processing video:', error);
     } finally {
@@ -127,12 +129,18 @@ const HighlightReview = () => {
         disabled={isProcessing}
         sx={{ mb: 2 }}
       >
-        {isProcessing ? 'Processing...' : 'Process Video'}
+        {isProcessing ? (
+          <>
+            Processing... <CircularProgress size={20} sx={{ ml: 1, color: 'white' }} />
+          </>
+        ) : (
+          'Process Video'
+        )}
       </Button>
 
       <Grid container spacing={2} sx={{ mt: 2 }}>
         <Grid item xs={12} md={6}>
-          <TranscriptPanel 
+          <TranscriptPanel
             processedTranscript={processedTranscript}
             rawTranscript={rawTranscript}
           />
