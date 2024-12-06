@@ -23,7 +23,7 @@ export const formatTranscript = (transcript) => {
   if (!transcript) return null;
   return transcript.split('\n').map((line, index) => (
     <Typography key={index} variant="body1" component="p">
-      {line}
+      {line + '\n'}
     </Typography>
   ));
 };
