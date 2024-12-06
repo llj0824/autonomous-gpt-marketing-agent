@@ -15,10 +15,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Container,
-  Grid,
   Typography,
   Button,
-  Paper
+  Box,
+  Dialog
 } from '@mui/material';
 import axios from 'axios';
 
@@ -36,6 +36,8 @@ const HighlightReview = () => {
   const [rawTranscript, setRawTranscript] = useState('');
   const [processedTranscript, setProcessedTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
   useEffect(() => {
     // Load all data when videoId changes
@@ -73,6 +75,7 @@ const HighlightReview = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/highlights`);
       setHighlights(response.data);
+      setCurrentIndex(0);
     } catch (error) {
       console.error('Error fetching highlights:', error);
     }
@@ -94,7 +97,11 @@ const HighlightReview = () => {
   const handleApprove = async (highlightId) => {
     try {
       await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'approved' });
-      setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
+      const newHighlights = highlights.filter((h) => h.id !== highlightId);
+      setHighlights(newHighlights);
+      if (currentIndex >= newHighlights.length) {
+        setCurrentIndex(newHighlights.length - 1);
+      }
     } catch (error) {
       console.error('Error approving highlight:', error);
     }
@@ -103,7 +110,11 @@ const HighlightReview = () => {
   const handleReject = async (highlightId) => {
     try {
       await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'rejected' });
-      setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
+      const newHighlights = highlights.filter((h) => h.id !== highlightId);
+      setHighlights(newHighlights);
+      if (currentIndex >= newHighlights.length) {
+        setCurrentIndex(newHighlights.length - 1);
+      }
     } catch (error) {
       console.error('Error rejecting highlight:', error);
     }
@@ -133,8 +144,10 @@ const HighlightReview = () => {
 
   if (!video) return <div>Loading...</div>;
 
+  const currentHighlight = highlights[currentIndex];
+
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
         {video.title}
       </Typography>
@@ -152,36 +165,52 @@ const HighlightReview = () => {
         {isProcessing ? 'Processing...' : 'Process Video'}
       </Button>
 
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <TranscriptPanel 
-            processedTranscript={processedTranscript}
-            rawTranscript={rawTranscript}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Button 
+          onClick={() => setShowTranscriptModal(true)}
+          variant="outlined"
+        >
+          View Full Transcript
+        </Button>
+        
+        <Box>
+          <Button 
+            onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
+            disabled={currentIndex === 0}
+            sx={{ mr: 1 }}
+          >
+            Previous
+          </Button>
+          <Button
+            onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, highlights.length - 1))}
+            disabled={currentIndex === highlights.length - 1 || highlights.length === 0}
+          >
+            Next
+          </Button>
+        </Box>
+      </Box>
+
+      {highlights.length === 0 ? (
+        <Typography variant="h6">All highlights have been reviewed.</Typography>
+      ) : (
+        currentHighlight && (
+          <HighlightCard
+            highlight={currentHighlight}
+            index={currentIndex}
+            onApprove={handleApprove}
+            onReject={handleReject}
           />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '75vh', overflowY: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-              Highlights ({highlights.length} remaining)
-            </Typography>
-            {highlights.length === 0 ? (
-              <Typography variant="body1">All highlights have been reviewed.</Typography>
-            ) : (
-              highlights.map((highlight, index) => (
-                <HighlightCard
-                  key={highlight.id}
-                  highlight={highlight}
-                  index={index}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  videoId={video.youtube_id}
-                  transcriptContext={getTranscriptContext(highlight)}
-                />
-              ))
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
+        )
+      )}
+
+      <Dialog
+        open={showTranscriptModal}
+        onClose={() => setShowTranscriptModal(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <TranscriptPanel processedTranscript={processedTranscript} rawTranscript={rawTranscript} />
+      </Dialog>
     </Container>
   );
 };
