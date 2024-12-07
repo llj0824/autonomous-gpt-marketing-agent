@@ -146,28 +146,6 @@ const HighlightReview = () => {
     }
   };
 
-  const getTranscriptContext = (highlight) => {
-    if (!processedTranscript) return null;
-
-    // Split transcript into lines
-    const lines = processedTranscript.split('\n');
-    
-    // Find the highlight's position in transcript
-    const highlightStart = highlight.content.match(/\[(\d{2}:\d{2})\s*->/)[1];
-    const startIdx = lines.findIndex(line => line.includes(highlightStart));
-    
-    if (startIdx === -1) return null;
-
-    // Get 3 lines before and after the highlight
-    const contextLines = {
-      before: lines.slice(Math.max(0, startIdx - 3), startIdx),
-      highlight: [lines[startIdx]], // You might need to adjust this based on your highlight format
-      after: lines.slice(startIdx + 1, startIdx + 4)
-    };
-
-    return contextLines;
-  };
-
   if (!video) return <div>Loading...</div>;
 
   const currentHighlight = highlights[currentIndex];

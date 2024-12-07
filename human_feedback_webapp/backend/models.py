@@ -25,6 +25,8 @@ class Channel(Base):
     name = Column(String)
     url = Column(String)
     last_checked = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
 
     videos = relationship("Video", back_populates="channel")
 
@@ -53,6 +55,8 @@ class Video(Base):
     )
     url = Column(String)
     thumbnail_url = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     channel = relationship("Channel", back_populates="videos")    
     highlights = relationship("Highlight", back_populates="video")
 
@@ -80,6 +84,8 @@ class Highlight(Base):
     id = Column(String, primary_key=True, index=True)
     video_id = Column(String, ForeignKey('videos.id'))
     content = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     
     video = relationship("Video", back_populates="highlights")
 

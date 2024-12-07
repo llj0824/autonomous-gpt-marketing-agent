@@ -262,7 +262,15 @@ const Dashboard = () => {
                     color="primary"
                     sx={{ mt: 0.5 }}
                   >
-                    {`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
+                    {/* TODO: Add highlight status tracking */}
+                    {/* Need to track:
+                        - Number of pending highlights
+                        - Number of approved highlights 
+                        - Number of rejected highlights
+                        - Add status field to highlight model
+                        - Update UI to show highlight status breakdown
+                    */}
+                    {`${video.highlights.length} highlights`}
                   </Typography>
                 </>
               }

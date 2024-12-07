@@ -55,14 +55,25 @@ async def create_or_update_channel(db: Session, channel_handle: str):
         logger.debug(f"Fetching channel data for: {channel_handle}")
         channel_data = await youtube_service.fetch_channel_data(channel_handle)
         
-        logger.debug(f"Creating/updating channel in DB: {channel_data['metadata']['title']}")
-        db_channel = models.Channel(
-            id=channel_handle,
-            name=channel_data['metadata']['title'],
-            url=f"https://www.youtube.com/{channel_handle}",
-            last_checked=datetime.now(timezone.utc)
-        )
-        db.merge(db_channel)
+        # Check if channel exists
+        db_channel = get_channel(db, channel_handle)
+        if db_channel:
+            # If updating, only update the updated_at timestamp
+            db_channel.name = channel_data['metadata']['title']
+            db_channel.url = f"https://www.youtube.com/{channel_handle}"
+            db_channel.last_checked = datetime.now(timezone.utc)
+            db_channel.updated_at = datetime.now(timezone.utc)
+        else:
+            # If creating new, set both timestamps
+            db_channel = models.Channel(
+                id=channel_handle,
+                name=channel_data['metadata']['title'],
+                url=f"https://www.youtube.com/{channel_handle}",
+                last_checked=datetime.now(timezone.utc),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            db.add(db_channel)
         
         logger.debug(f"Processing {len(channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL])} videos for channel")
         for video in channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL]:
@@ -91,15 +102,28 @@ async def create_or_update_channel(db: Session, channel_handle: str):
 def create_or_update_videos(db: Session, videos_data: list, channel_id: str):
     for video in videos_data:
         duration = parse_duration(video.get('duration', '0:00'))
-        db_video = models.Video(
-            id=video['videoId'],
-            channel_id=channel_id,
-            title=video['title'],
-            duration=duration,
-            url=video['url'],
-            thumbnail_url=video['thumbnailUrl']
-        )
-        db.merge(db_video)
+        existing_video = get_video(db, video['videoId'])
+        
+        if existing_video:
+            # Update existing video
+            existing_video.title = video['title']
+            existing_video.duration = duration
+            existing_video.url = video['url']
+            existing_video.thumbnail_url = video['thumbnailUrl']
+            existing_video.updated_at = datetime.now(timezone.utc)
+        else:
+            # Create new video
+            db_video = models.Video(
+                id=video['videoId'],
+                channel_id=channel_id,
+                title=video['title'],
+                duration=duration,
+                url=video['url'],
+                thumbnail_url=video['thumbnailUrl'],
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            db.add(db_video)
     db.commit()
 
 def get_video(db: Session, video_id: str):
@@ -118,17 +142,20 @@ def get_highlight(db: Session, highlight_id: str):
 
 def create_highlight(db: Session, video_id: str, highlight_data: str):
     """
-    Creates a new highlight entry with simplified fields
+    Creates a new highlight entry with timestamps
     
     Args:
         db: Database session
         video_id: ID of the video this highlight belongs to
         highlight_data: Text content of the highlight
     """
+    now = datetime.now(timezone.utc)
     db_highlight = models.Highlight(
         id=str(uuid4()),
         video_id=video_id,
-        content=highlight_data
+        content=highlight_data,
+        created_at=now,
+        updated_at=now
     )
     
     db.add(db_highlight)
