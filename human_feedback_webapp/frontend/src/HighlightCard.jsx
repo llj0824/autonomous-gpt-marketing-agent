@@ -6,43 +6,28 @@ import {
   Typography,
   Button,
   Box,
-  Collapse,
   Dialog,
   IconButton,
   Chip,
   Divider
 } from '@mui/material';
 import {
-  ExpandMore as ExpandMoreIcon,
   PlayArrow as PlayArrowIcon,
   Article as ArticleIcon,
   ThumbUp as ApproveIcon,
   ThumbDown as RejectIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-
-// Styled expand button that rotates when expanded
-const ExpandButton = styled(IconButton)(({ theme, expanded }) => ({
-  transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-  transition: theme.transitions.create('transform', {
-    duration: theme.transitions.duration.shortest,
-  }),
-}));
-
 
 const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
 
-  // Extract first timestamp from content for the "Watch from" link
   const timeMatch = highlight.content.match(/\[(\d{2}:\d{2})\s*->/);
   const startTime = timeMatch ? timeMatch[1] : '00:00';
 
-  // Get first topic as summary
   const topicMatch = highlight.content.match(/🔬\s*Topic:\s*([^\n]+)/);
   const summary = topicMatch ? topicMatch[1].trim() : 'No topic available';
 
-  // Convert MM:SS to seconds
   const handleWatchFromTimestamp = () => {
     const [minutes, seconds] = startTime.split(':').map(Number);
     const timeInSeconds = minutes * 60 + seconds;
@@ -53,19 +38,19 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   return (
     <Card 
       sx={{ 
-        mb: 2,
+        mb: 3,
         border: '1px solid',
         borderColor: 'divider',
+        transition: 'box-shadow 0.3s ease',
         '&:hover': {
-          boxShadow: 3,
+          boxShadow: 4,
         }
       }}
     >
-      {/* Card Header */}
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
-            <Typography variant="h6" component="div">
+            <Typography variant="h6" component="div" sx={{ mb: 1 }}>
               Highlight #{index + 1}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -83,36 +68,32 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
         </Box>
 
         <Divider sx={{ my: 2 }} />
-        
-        {/* Parse and display highlight content */}
+
         {highlight.content.split('\n').map((line, idx) => {
-          if (line.match(/\[\d{2}:\d{2}:\d{2}/)) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  {line.trim()}
-                </Typography>
-              </Box>
-            );
-          }
+          if (!line.trim()) return null;
           if (line.includes('Topic:')) {
             return (
               <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary">🔬 Topic</Typography>
-                <Typography>{line.replace('🔬 Topic:', '').trim()}</Typography>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🔬 Topic</Typography>
+                <Typography variant="body2">{line.replace('🔬 Topic:', '').trim()}</Typography>
               </Box>
             );
           }
           if (line.includes('Quote:')) {
             return (
               <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary">✨ Quote</Typography>
-                <Typography sx={{ 
-                  fontStyle: 'italic',
-                  borderLeft: '3px solid',
-                  borderColor: 'primary.main',
-                  pl: 2
-                }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>✨ Quote</Typography>
+                <Typography 
+                  variant="body2"
+                  sx={{ 
+                    fontStyle: 'italic',
+                    borderLeft: '3px solid',
+                    borderColor: 'primary.main',
+                    pl: 2,
+                    py: 1,
+                    bgcolor: 'action.hover'
+                  }}
+                >
                   {line.replace('✨ Quote:', '').trim()}
                 </Typography>
               </Box>
@@ -121,24 +102,24 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
           if (line.includes('Insight:')) {
             return (
               <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary">💎 Insight</Typography>
-                <Typography>{line.replace('💎 Insight:', '').trim()}</Typography>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>💎 Insight</Typography>
+                <Typography variant="body2">{line.replace('💎 Insight:', '').trim()}</Typography>
               </Box>
             );
           }
           if (line.includes('TAKEAWAY:')) {
             return (
               <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary">🎯 TAKEAWAY</Typography>
-                <Typography>{line.replace('🎯 TAKEAWAY:', '').trim()}</Typography>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🎯 TAKEAWAY</Typography>
+                <Typography variant="body2">{line.replace('🎯 TAKEAWAY:', '').trim()}</Typography>
               </Box>
             );
           }
           if (line.includes('CONTEXT:')) {
             return (
               <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary">📝 CONTEXT</Typography>
-                <Typography>{line.replace('📝 CONTEXT:', '').trim()}</Typography>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>📝 CONTEXT</Typography>
+                <Typography variant="body2">{line.replace('📝 CONTEXT:', '').trim()}</Typography>
               </Box>
             );
           }
@@ -155,7 +136,6 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
         </Button>
       </CardContent>
 
-      {/* Action Buttons */}
       <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
         <Button
           variant="contained"
@@ -175,7 +155,6 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
         </Button>
       </CardActions>
 
-      {/* Transcript Dialog */}
       <Dialog
         open={showTranscript}
         onClose={() => setShowTranscript(false)}
@@ -190,8 +169,7 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
         </Box>
         <Divider />
         <Box sx={{ p: 3 }}>
-          {/* TODO: Add transcript context content */}
-          <Typography>
+          <Typography variant="body2">
             Transcript context will be displayed here...
           </Typography>
         </Box>

@@ -21,12 +21,46 @@ import {
   ListItem,
   ListItemText,
   Button,
-  TextField
+  TextField,
+  Box,
+  Collapse
 } from '@mui/material';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AddIcon from '@mui/icons-material/Add';
+import YouTubeIcon from '@mui/icons-material/YouTube';
 
 const API_BASE_URL = 'http://localhost:8000'; // Adjust port if your FastAPI backend uses a different one
+
+// Add styled components
+const DashboardContainer = styled(Container)(({ theme }) => ({
+  maxWidth: '1200px',
+  margin: '0 auto',
+  padding: theme.spacing(3),
+}));
+
+const ChannelSection = styled(Paper)(({ theme }) => ({
+  borderRadius: '16px',
+  overflow: 'hidden',
+  marginBottom: theme.spacing(3),
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    boxShadow: theme.shadows[3],
+  },
+}));
+
+const VideoCard = styled(ListItem)(({ theme }) => ({
+  borderRadius: '12px',
+  marginBottom: theme.spacing(2),
+  backgroundColor: theme.palette.background.paper,
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: theme.shadows[2],
+  },
+}));
 
 const Dashboard = () => {
   // State for storing the list of YouTube channels from the backend
@@ -35,6 +69,7 @@ const Dashboard = () => {
   const [newChannelUrl, setNewChannelUrl] = useState('');
   // State for storing the list of videos across all channels
   const [videos, setVideos] = useState([]);
+  const [showChannels, setShowChannels] = useState(false);
 
   // Fetch initial data when component mounts
   useEffect(() => {
@@ -108,88 +143,134 @@ const Dashboard = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        {/* Channel Management Section */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
+    <DashboardContainer>
+      {/* Channel Management Section */}
+      <ChannelSection>
+        <Box
+          onClick={() => setShowChannels(!showChannels)}
+          sx={{
+            p: 2,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <YouTubeIcon color="error" />
+            <Typography variant="h6">
               Channel Management
             </Typography>
-            <form onSubmit={handleAddChannel}>
-              <TextField
-                fullWidth
-                label="YouTube Channel URL"
-                value={newChannelUrl}
-                onChange={(e) => setNewChannelUrl(e.target.value)}
-                margin="normal"
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-              >
-                Add Channel
-              </Button>
-            </form>
-            <List>
-              {channels.map((channel) => (
-                <ListItem key={channel.id}>
-                  <ListItemText
-                    primary={channel.name}
-                    secondary={channel.url}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Grid>
+          </Box>
+          <ExpandMoreIcon
+            sx={{
+              transform: showChannels ? 'rotate(180deg)' : 'rotate(0)',
+              transition: 'transform 0.2s',
+            }}
+          />
+        </Box>
 
-        {/* Video Queue Section */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Video Queue
-            </Typography>
-            <List>
-              {videos.map((video) => (
-                <ListItem
-                  key={video.id}
-                  button
-                  component={Link}
-                  to={`/review/${video.id}`}
-                  sx={{ display: 'flex', gap: 2 }}
-                >
-                  <img 
-                    src={video.thumbnail_url} 
-                    alt={video.title}
-                    style={{
-                      width: '120px',
-                      height: '67px',
-                      objectFit: 'cover',
-                      borderRadius: '4px'
-                    }}
-                  />
-                  <ListItemText
-                    primary={video.title}
-                    secondary={
-                      <>
-                        <Typography component="span" display="block">
-                          {`Channel: ${video.channel_id || 'Unknown'} • Duration: ${formatDuration(video.duration)}`}
-                        </Typography>
-                        <Typography component="span" display="block">
-                          {`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
-                        </Typography>
-                      </>
+        <Collapse in={showChannels}>
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <form onSubmit={handleAddChannel}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="YouTube Channel URL"
+                  value={newChannelUrl}
+                  onChange={(e) => setNewChannelUrl(e.target.value)}
+                  size="small"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
                     }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Container>
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  sx={{ 
+                    borderRadius: '12px',
+                    minWidth: '120px'
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
+            </form>
+
+            {channels.length > 0 && (
+              <List sx={{ mt: 2 }}>
+                {channels.map((channel) => (
+                  <ListItem
+                    key={channel.id}
+                    sx={{
+                      borderRadius: '12px',
+                      mb: 1,
+                      backgroundColor: 'background.default',
+                    }}
+                  >
+                    <ListItemText
+                      primary={channel.name}
+                      secondary={channel.url}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        </Collapse>
+      </ChannelSection>
+
+      {/* Video Queue Section */}
+      <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3 }}>
+        Video Queue
+      </Typography>
+      
+      <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {videos.map((video) => (
+          <VideoCard
+            key={video.id}
+            component={Link}
+            to={`/review/${video.id}`}
+            sx={{ display: 'flex', gap: 2 }}
+          >
+            <img 
+              src={video.thumbnail_url} 
+              alt={video.title}
+              style={{
+                width: '160px',
+                height: '90px',
+                objectFit: 'cover',
+                borderRadius: '8px'
+              }}
+            />
+            <ListItemText
+              primary={
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                  {video.title}
+                </Typography>
+              }
+              secondary={
+                <>
+                  <Typography variant="body2" color="text.secondary" display="block">
+                    {`Channel: ${video.channel_id || 'Unknown'} • Duration: ${formatDuration(video.duration)}`}
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color="primary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    {`${video.processed_highlights} / ${video.total_highlights} highlights reviewed`}
+                  </Typography>
+                </>
+              }
+            />
+          </VideoCard>
+        ))}
+      </List>
+    </DashboardContainer>
   );
 };
 

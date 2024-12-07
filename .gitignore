@@ -36,5 +36,5 @@ yarn-debug.log*
 yarn-error.log*
 
 # Database
-data/app.db
+human_feedback_webapp/data/app.db
 human_feedback_webapp/data/app.db

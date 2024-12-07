@@ -21,12 +21,38 @@ import {
   Dialog
 } from '@mui/material';
 import axios from 'axios';
+import { styled } from '@mui/material/styles';
+import ArticleIcon from '@mui/icons-material/Article';
 
 import TranscriptPanel from './TranscriptPanel';
 import HighlightCard from './HighlightCard';
 import { formatDuration } from './utils';
 
 const API_BASE_URL = 'http://localhost:8000';
+
+// Add styled components
+const ReviewContainer = styled(Box)(({ theme }) => ({
+  maxWidth: '1200px',
+  margin: '0 auto',
+  padding: theme.spacing(3),
+}));
+
+const HeaderSection = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  paddingBottom: theme.spacing(3),
+}));
+
+const ControlsSection = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: theme.spacing(3),
+  padding: theme.spacing(2),
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[1],
+}));
 
 const HighlightReview = () => {
   const { videoId } = useParams();
@@ -147,48 +173,58 @@ const HighlightReview = () => {
   const currentHighlight = highlights[currentIndex];
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        {video.title}
-      </Typography>
-      <Typography variant="subtitle1" gutterBottom>
-        Channel: {video.channel_id} • Duration: {formatDuration(video.duration)}
-      </Typography>
+    <ReviewContainer>
+      <HeaderSection>
+        <Typography variant="h4" gutterBottom>
+          {video.title}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="subtitle1">
+            Channel: {video.channel_id} • Duration: {formatDuration(video.duration)}
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleProcessVideo}
+            disabled={isProcessing}
+            size="small"
+          >
+            {isProcessing ? 'Processing...' : 'Process Video'}
+          </Button>
+        </Box>
+      </HeaderSection>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleProcessVideo}
-        disabled={isProcessing}
-        sx={{ mb: 2 }}
-      >
-        {isProcessing ? 'Processing...' : 'Process Video'}
-      </Button>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <ControlsSection>
         <Button 
           onClick={() => setShowTranscriptModal(true)}
           variant="outlined"
+          startIcon={<ArticleIcon />}
         >
           View Full Transcript
         </Button>
         
-        <Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Typography variant="body2" sx={{ mr: 2 }}>
+            Highlight {currentIndex + 1} of {highlights.length}
+          </Typography>
           <Button 
             onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
             disabled={currentIndex === 0}
-            sx={{ mr: 1 }}
+            variant="outlined"
+            size="small"
           >
             Previous
           </Button>
           <Button
             onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, highlights.length - 1))}
             disabled={currentIndex === highlights.length - 1 || highlights.length === 0}
+            variant="outlined"
+            size="small"
           >
             Next
           </Button>
         </Box>
-      </Box>
+      </ControlsSection>
 
       {highlights.length === 0 ? (
         <Typography variant="h6">All highlights have been reviewed.</Typography>
@@ -211,7 +247,7 @@ const HighlightReview = () => {
       >
         <TranscriptPanel processedTranscript={processedTranscript} rawTranscript={rawTranscript} />
       </Dialog>
-    </Container>
+    </ReviewContainer>
   );
 };
 
