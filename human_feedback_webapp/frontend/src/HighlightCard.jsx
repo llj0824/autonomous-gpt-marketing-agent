@@ -30,6 +30,7 @@ const ExpandButton = styled(IconButton)(({ theme, expanded }) => ({
   }),
 }));
 
+
 const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
 
@@ -40,6 +41,14 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   // Get first topic as summary
   const topicMatch = highlight.content.match(/🔬\s*Topic:\s*([^\n]+)/);
   const summary = topicMatch ? topicMatch[1].trim() : 'No topic available';
+
+  // Convert MM:SS to seconds
+  const handleWatchFromTimestamp = () => {
+    const [minutes, seconds] = startTime.split(':').map(Number);
+    const timeInSeconds = minutes * 60 + seconds;
+    const videoUrl = `https://www.youtube.com/watch?v=${highlight.video_id}&t=${timeInSeconds}s`;
+    window.open(videoUrl, '_blank');
+  };
 
   return (
     <Card 
@@ -65,11 +74,11 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
           </Box>
           <Chip
             icon={<PlayArrowIcon />}
-              label={`Watch from ${startTime}`}
+            label={`Watch from ${startTime}`}
             clickable
             color="primary"
             variant="outlined"
-            onClick={() => {/* TODO: Add video link handler */}}
+            onClick={handleWatchFromTimestamp}
           />
         </Box>
 
