@@ -20,7 +20,7 @@ The Human Feedback Web Application helps review and improve autonomously generat
 ```mermaid
 graph LR
     A[YouTube Videos] --> B[Transcription]
-    B --> C[AI Processing]
+    B --> C[LLM Highlights]
     C --> D[Human Review]
     D --> E[Social Media Posts]
     D --> F[AI Training Feedback]

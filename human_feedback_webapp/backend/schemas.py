@@ -12,20 +12,22 @@ These schemas mirror the database models but are specifically for API interactio
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
-from .enums import ProcessingStatus
+from .enums import ProcessingStatus, ReviewStatus
 
 # Highlight Schemas
 class HighlightBase(BaseModel):
     id: str
     video_id: str
     content: str
+    review_status: Optional[ReviewStatus] = None
 
 class HighlightCreate(BaseModel):
     video_id: str
     content: str
 
 class HighlightUpdate(BaseModel):
-    content: Optional[str]
+    content: Optional[str] = None
+    review_status: Optional[ReviewStatus] = None
 
 class Highlight(HighlightBase):
     class Config:

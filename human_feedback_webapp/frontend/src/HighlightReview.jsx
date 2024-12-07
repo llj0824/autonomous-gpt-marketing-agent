@@ -62,13 +62,19 @@ const HighlightReview = () => {
   const [rawTranscript, setRawTranscript] = useState('');
   const [processedTranscript, setProcessedTranscript] = useState('');
   const [highlights, setHighlights] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
   useEffect(() => {
     // Load all data when videoId changes
     fetchAllData();
   }, [videoId]);
+
+  // Duplicated from backend/enums.py
+  const ReviewStatus = {
+    PENDING: "PENDING",
+    APPROVED: "APPROVED", 
+    REJECTED: "REJECTED"
+  };
 
   const fetchAllData = async () => {
     await fetchVideoData();
@@ -100,8 +106,11 @@ const HighlightReview = () => {
   const fetchHighlights = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/highlights`);
-      setHighlights(response.data);
-      setCurrentIndex(0);
+      // Filter OUT highlights that are approved or rejected
+      const pendingHighlights = response.data.filter(h => 
+        h.review_status !== ReviewStatus.APPROVED && h.review_status !== ReviewStatus.REJECTED
+      );
+      setHighlights(pendingHighlights);
     } catch (error) {
       console.error('Error fetching highlights:', error);
     }
@@ -122,12 +131,11 @@ const HighlightReview = () => {
 
   const handleApprove = async (highlightId) => {
     try {
-      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'approved' });
-      const newHighlights = highlights.filter((h) => h.id !== highlightId);
-      setHighlights(newHighlights);
-      if (currentIndex >= newHighlights.length) {
-        setCurrentIndex(newHighlights.length - 1);
-      }
+      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { 
+        review_status: ReviewStatus.APPROVED
+      });
+      // sync with database
+      await fetchHighlights();
     } catch (error) {
       console.error('Error approving highlight:', error);
     }
@@ -135,20 +143,17 @@ const HighlightReview = () => {
 
   const handleReject = async (highlightId) => {
     try {
-      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { status: 'rejected' });
-      const newHighlights = highlights.filter((h) => h.id !== highlightId);
-      setHighlights(newHighlights);
-      if (currentIndex >= newHighlights.length) {
-        setCurrentIndex(newHighlights.length - 1);
-      }
+      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { 
+        review_status: ReviewStatus.REJECTED
+      });
+      // sync with database
+      await fetchHighlights();
     } catch (error) {
       console.error('Error rejecting highlight:', error);
     }
   };
 
   if (!video) return <div>Loading...</div>;
-
-  const currentHighlight = highlights[currentIndex];
 
   return (
     <ReviewContainer>
@@ -181,40 +186,19 @@ const HighlightReview = () => {
           View Full Transcript
         </Button>
         
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            Highlight {currentIndex + 1} of {highlights.length}
-          </Typography>
-          <Button 
-            onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
-            disabled={currentIndex === 0}
-            variant="outlined"
-            size="small"
-          >
-            Previous
-          </Button>
-          <Button
-            onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, highlights.length - 1))}
-            disabled={currentIndex === highlights.length - 1 || highlights.length === 0}
-            variant="outlined"
-            size="small"
-          >
-            Next
-          </Button>
-        </Box>
+        <Typography variant="body2">
+          {highlights.length} highlights remaining
+        </Typography>
       </ControlsSection>
 
       {highlights.length === 0 ? (
         <Typography variant="h6">All highlights have been reviewed.</Typography>
       ) : (
-        currentHighlight && (
-          <HighlightCard
-            highlight={currentHighlight}
-            index={currentIndex}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        )
+        <HighlightCard
+          highlight={highlights[0]}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
       )}
 
       <Dialog

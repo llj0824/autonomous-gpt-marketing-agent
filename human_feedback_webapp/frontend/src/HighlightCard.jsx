@@ -50,9 +50,6 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
-            <Typography variant="h6" component="div" sx={{ mb: 1 }}>
-              Highlight #{index + 1}
-            </Typography>
             <Typography variant="body2" color="text.secondary">
               {summary}
             </Typography>
@@ -123,7 +120,11 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
               </Box>
             );
           }
-          return null;
+          return (
+            <Typography key={idx} variant="body1" sx={{ mb: 2 }}>
+              {line}
+            </Typography>
+          );
         })}
 
         <Button

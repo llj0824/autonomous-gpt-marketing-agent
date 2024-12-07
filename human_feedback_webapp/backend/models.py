@@ -15,8 +15,8 @@ from typing import List
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, CheckConstraint
 from sqlalchemy.orm import relationship
 from .init_database import Base
-from .enums import ProcessingStatus, HighlightStatus
-from .schemas import Channel, Video, Highlight, Transcript
+from .enums import ProcessingStatus, ReviewStatus
+from .schemas import Channel, Video, Highlight
 from uuid import uuid4
 
 class Channel(Base):
@@ -84,6 +84,12 @@ class Highlight(Base):
     id = Column(String, primary_key=True, index=True)
     video_id = Column(String, ForeignKey('videos.id'))
     content = Column(Text)
+    review_status = Column(
+        String,
+        CheckConstraint(f"review_status IN {tuple(ReviewStatus.__members__.values())}"),
+        default=ReviewStatus.PENDING.value,
+        nullable=True
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     
@@ -94,7 +100,8 @@ class Highlight(Base):
         return Highlight(
             id=self.id,
             video_id=self.video_id,
-            content=self.content
+            content=self.content,
+            review_status=self.review_status
         )
 
 class Transcript(Base):
