@@ -21,7 +21,7 @@ from uuid import uuid4
 
 
 # Add at the top of the file, after the imports
-MAX_VIDEOS_PER_CHANNEL = 10  # Configurable constant
+NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL = 5  # Configurable constant
 
 # Configure logging
 logging.basicConfig(
@@ -53,7 +53,7 @@ async def create_or_update_channel(db: Session, channel_handle: str):
     try:
         # Fetch data from YouTube
         logger.debug(f"Fetching channel data for: {channel_handle}")
-        channel_data = await YoutubeService.fetch_channel_data(channel_handle)
+        channel_data = await youtube_service.fetch_channel_data(channel_handle)
         
         logger.debug(f"Creating/updating channel in DB: {channel_data['metadata']['title']}")
         db_channel = models.Channel(
@@ -64,8 +64,8 @@ async def create_or_update_channel(db: Session, channel_handle: str):
         )
         db.merge(db_channel)
         
-        logger.debug(f"Processing {len(channel_data['videos'][:MAX_VIDEOS_PER_CHANNEL])} videos for channel")
-        for video in channel_data['videos'][:MAX_VIDEOS_PER_CHANNEL]:
+        logger.debug(f"Processing {len(channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL])} videos for channel")
+        for video in channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL]:
             logger.debug(f"Processing video: {video['videoId']} - {video['title']}")
             duration = parse_duration(video.get('duration', '0:00'))
             db_video = models.Video(

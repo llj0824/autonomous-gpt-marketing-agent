@@ -36,3 +36,34 @@
     transform: rotate(360deg);
   }
 }
+
+/* Add new styles */
+body {
+  background-color: #f5f5f5;
+}
+
+.MuiDialog-paper {
+  border-radius: 12px !important;
+}
+
+.MuiCard-root {
+  border-radius: 12px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.MuiButton-root {
+  text-transform: none !important;
+}
+
+.MuiAppBar-root {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.MuiToolbar-root {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}

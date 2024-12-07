@@ -1,125 +1,141 @@
-import React from 'react';
-import { Card, CardContent, CardActions, Typography, Button, Box, Divider } from '@mui/material';
-import { ThumbUp as ApproveIcon, ThumbDown as RejectIcon } from '@mui/icons-material';
+import React, { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Button,
+  Box,
+  Dialog,
+  IconButton,
+  Chip,
+  Divider
+} from '@mui/material';
+import {
+  PlayArrow as PlayArrowIcon,
+  Article as ArticleIcon,
+  ThumbUp as ApproveIcon,
+  ThumbDown as RejectIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
 
 const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
-  // Parse the content string into segments
-  const parseContent = (content) => {
-    return content.split(/\[\d{2}:\d{2}\s*->\s*\d{2}:\d{2}\]/)
-      .filter(Boolean)
-      .map(segment => {
-        const parts = {};
-        
-        // Extract each section using regex
-        const topicMatch = segment.match(/🔬\s*Topic:\s*([^\n]+)/);
-        const quoteMatch = segment.match(/✨\s*Quote:\s*([^\n]+)/);
-        const insightMatch = segment.match(/💎\s*Insight:\s*([^\n]+)/);
-        const takeawayMatch = segment.match(/🎯\s*TAKEAWAY:\s*([^\n]+)/);
-        const contextMatch = segment.match(/📝\s*CONTEXT:\s*([^\n]+)/);
-        
-        // Get the timestamp from the previous segment
-        const timeMatch = content.match(/\[(\d{2}:\d{2}\s*->\s*\d{2}:\d{2})\]/);
+  const [showTranscript, setShowTranscript] = useState(false);
 
-        if (topicMatch) parts.topic = topicMatch[1].trim();
-        if (quoteMatch) parts.quote = quoteMatch[1].trim();
-        if (insightMatch) parts.insight = insightMatch[1].trim();
-        if (takeawayMatch) parts.takeaway = takeawayMatch[1].trim();
-        if (contextMatch) parts.context = contextMatch[1].trim();
-        if (timeMatch) parts.timeRange = timeMatch[0];
+  const timeMatch = highlight.content.match(/\[(\d{2}:\d{2})\s*->/);
+  const startTime = timeMatch ? timeMatch[1] : '00:00';
 
-        return parts;
-      });
+  const topicMatch = highlight.content.match(/🔬\s*Topic:\s*([^\n]+)/);
+  const summary = topicMatch ? topicMatch[1].trim() : 'No topic available';
+
+  const handleWatchFromTimestamp = () => {
+    const [minutes, seconds] = startTime.split(':').map(Number);
+    const timeInSeconds = minutes * 60 + seconds;
+    const videoUrl = `https://www.youtube.com/watch?v=${highlight.video_id}&t=${timeInSeconds}s`;
+    window.open(videoUrl, '_blank');
   };
 
-  const segments = parseContent(highlight.content);
-
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card 
+      sx={{ 
+        mb: 3,
+        border: '1px solid',
+        borderColor: 'divider',
+        transition: 'box-shadow 0.3s ease',
+        '&:hover': {
+          boxShadow: 4,
+        }
+      }}
+    >
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Highlight #{index + 1}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" component="div" sx={{ mb: 1 }}>
+              Highlight #{index + 1}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {summary}
+            </Typography>
+          </Box>
+          <Chip
+            icon={<PlayArrowIcon />}
+            label={`Watch from ${startTime}`}
+            clickable
+            color="primary"
+            variant="outlined"
+            onClick={handleWatchFromTimestamp}
+          />
+        </Box>
 
-        {segments.map((segment, idx) => (
-          <Box key={idx} sx={{ mb: 3 }}>
-            {segment.timeRange && (
-              <Typography 
-                variant="subtitle2" 
-                color="primary" 
-                sx={{ 
-                  mb: 2,
-                  fontFamily: 'monospace',
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  display: 'inline-block'
-                }}
-              >
-                {segment.timeRange}
-              </Typography>
-            )}
+        <Divider sx={{ my: 2 }} />
 
-            {segment.topic && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  🔬 Topic
-                </Typography>
-                <Typography variant="body1">{segment.topic}</Typography>
+        {highlight.content.split('\n').map((line, idx) => {
+          if (!line.trim()) return null;
+          if (line.includes('Topic:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🔬 Topic</Typography>
+                <Typography variant="body2">{line.replace('🔬 Topic:', '').trim()}</Typography>
               </Box>
-            )}
-
-            {segment.quote && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  ✨ Quote
-                </Typography>
+            );
+          }
+          if (line.includes('Quote:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>✨ Quote</Typography>
                 <Typography 
-                  variant="body1" 
+                  variant="body2"
                   sx={{ 
                     fontStyle: 'italic',
-                    borderLeft: '3px solid #e0e0e0',
-                    pl: 2 
+                    borderLeft: '3px solid',
+                    borderColor: 'primary.main',
+                    pl: 2,
+                    py: 1,
+                    bgcolor: 'action.hover'
                   }}
                 >
-                  {segment.quote}
+                  {line.replace('✨ Quote:', '').trim()}
                 </Typography>
               </Box>
-            )}
-
-            {segment.insight && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  💎 Insight
-                </Typography>
-                <Typography variant="body1">{segment.insight}</Typography>
+            );
+          }
+          if (line.includes('Insight:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>💎 Insight</Typography>
+                <Typography variant="body2">{line.replace('💎 Insight:', '').trim()}</Typography>
               </Box>
-            )}
-
-            {segment.takeaway && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  🎯 Takeaway
-                </Typography>
-                <Typography variant="body1">{segment.takeaway}</Typography>
+            );
+          }
+          if (line.includes('TAKEAWAY:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🎯 TAKEAWAY</Typography>
+                <Typography variant="body2">{line.replace('🎯 TAKEAWAY:', '').trim()}</Typography>
               </Box>
-            )}
-
-            {segment.context && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  📝 Context
-                </Typography>
-                <Typography variant="body1">{segment.context}</Typography>
+            );
+          }
+          if (line.includes('CONTEXT:')) {
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>📝 CONTEXT</Typography>
+                <Typography variant="body2">{line.replace('📝 CONTEXT:', '').trim()}</Typography>
               </Box>
-            )}
+            );
+          }
+          return null;
+        })}
 
-            {idx < segments.length - 1 && (
-              <Divider sx={{ my: 2 }} />
-            )}
-          </Box>
-        ))}
+        <Button
+          startIcon={<ArticleIcon />}
+          variant="outlined"
+          onClick={() => setShowTranscript(true)}
+          sx={{ mt: 2 }}
+        >
+          Show Transcript Context
+        </Button>
       </CardContent>
-      
+
       <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
         <Button
           variant="contained"
@@ -138,6 +154,26 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
           Reject
         </Button>
       </CardActions>
+
+      <Dialog
+        open={showTranscript}
+        onClose={() => setShowTranscript(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
+          <Typography variant="h6">Transcript Context</Typography>
+          <IconButton onClick={() => setShowTranscript(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 3 }}>
+          <Typography variant="body2">
+            Transcript context will be displayed here...
+          </Typography>
+        </Box>
+      </Dialog>
     </Card>
   );
 };
