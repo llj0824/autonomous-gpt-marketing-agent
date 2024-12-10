@@ -134,7 +134,7 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
                 video_id=video_id,
                 highlight_data=highlight['content'],
                 prompt=highlight['prompt'],
-                system_role=highlight['system_role']
+                    system_role=highlight['system_role']
             )
         logger.info(f"Successfully generated and stored highlights for video {video_id}")
         

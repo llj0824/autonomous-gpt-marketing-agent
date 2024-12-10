@@ -225,7 +225,7 @@ Two sentence summary of highlight in viewpoint of the reader."""
             for segment in segments:
                 if segment.strip():
                     individual_highlights.append({
-                        'highlight': segment.strip(),
+                        'content': segment.strip(),
                         'prompt': prompt_chunk,
                         'system_role': self.llm_highlights_system_role
                     })
