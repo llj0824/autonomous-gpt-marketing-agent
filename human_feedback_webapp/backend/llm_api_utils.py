@@ -14,8 +14,8 @@ from config import Config
 
 class LLM_API_Utils:
     DEFAULT_PARTITIONS = 8
-    GPT_4o = "chatgpt-4o-latest"
-    # GPT_4o = "gpt-4o-mini"
+    # GPT_4o = "chatgpt-4o-latest"
+    GPT_4o = "gpt-4o-mini"
     LINES_PER_PARTITION = 60  # Approximately 5 minutes per chunk (5s per line)
 
     def __init__(self):
@@ -189,27 +189,45 @@ Two sentence summary of highlight in viewpoint of the reader."""
                                 processed_transcript: str, 
                                 model_name: str = GPT_4o,
                                 max_tokens: int = 10000,
-                                temperature: float = 0.4) -> List[str]:
+                                temperature: float = 0.4) -> List[dict]:
         """
         Generate highlights from a processed transcript using the highlights system role.
-        Returns a list of individual highlights.
-        """
-        # Get the raw highlights from the LLM
-        raw_highlights = await self.process_in_partitions(
-            transcript=processed_transcript,
-            system_role=self.llm_highlights_system_role,
-            model_name=model_name,
-            max_tokens=max_tokens,
-            temperature=temperature
-        )
+        Returns a list of highlights with their associated prompts and system role.
         
-        # Split each raw highlight into individual highlights
+        Returns:
+            List of dicts containing:
+            - content: The highlight text
+            - prompt: The transcript segment used to generate this highlight
+            - system_role: The system role used to generate this highlight
+        """
+        # Split transcript into manageable chunks
+        transcript_chunks = self._split_transcript_for_processing(processed_transcript)
+        
+        # Process each chunk with GPT-4
+        tasks = [
+            self.call_gpt4(
+                system_role=self.llm_highlights_system_role,
+                prompt=chunk,
+                model=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature
+            ) for chunk in transcript_chunks
+        ]
+        raw_highlights = await asyncio.gather(*tasks)
+        
+        # Process the results
         individual_highlights = []
-        for raw_highlight in raw_highlights:
+        for raw_highlight, prompt_chunk in zip(raw_highlights, transcript_chunks):
             # Match both [MM:SS] and [HH:MM:SS] formats with flexible spacing
             timestamp_pattern = r'(?=\[(?:\d{2}:)?\d{2}:\d{2}\s*->\s*(?:\d{2}:)?\d{2}:\d{2}\])'
             segments = re.split(timestamp_pattern, raw_highlight)
             # Filter out empty segments and add non-empty ones to the list
-            individual_highlights.extend([seg.strip() for seg in segments if seg.strip()])
+            for segment in segments:
+                if segment.strip():
+                    individual_highlights.append({
+                        'highlight': segment.strip(),
+                        'prompt': prompt_chunk,
+                        'system_role': self.llm_highlights_system_role
+                    })
         
         return individual_highlights

@@ -84,6 +84,9 @@ class Highlight(Base):
     id = Column(String, primary_key=True, index=True)
     video_id = Column(String, ForeignKey('videos.id'))
     content = Column(Text)
+    prompt = Column(Text, nullable=True)
+    system_role = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
     review_status = Column(
         String,
         CheckConstraint(f"review_status IN {tuple(ReviewStatus.__members__.values())}"),

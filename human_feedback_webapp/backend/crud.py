@@ -140,7 +140,7 @@ def create_video(db: Session, video_metadata: dict):
 def get_highlight(db: Session, highlight_id: str):
     return db.query(models.Highlight).filter(models.Highlight.id == highlight_id).first()
 
-def create_highlight(db: Session, video_id: str, highlight_data: str):
+def create_highlight(db: Session, video_id: str, highlight_data: str, prompt: str = None, system_role: str = None):
     """
     Creates a new highlight entry with timestamps
     
@@ -148,12 +148,16 @@ def create_highlight(db: Session, video_id: str, highlight_data: str):
         db: Database session
         video_id: ID of the video this highlight belongs to
         highlight_data: Text content of the highlight
+        prompt: The transcript segment used to generate this highlight
+        system_role: The system role used to generate this highlight
     """
     now = datetime.now(timezone.utc)
     db_highlight = models.Highlight(
         id=str(uuid4()),
         video_id=video_id,
         content=highlight_data,
+        prompt=prompt,
+        system_role=system_role,
         created_at=now,
         updated_at=now
     )
