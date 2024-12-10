@@ -180,7 +180,11 @@ def update_highlight(db: Session, highlight_id: str, highlight: schemas.Highligh
     return db_highlight
 
 def get_all_videos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Video).offset(skip).limit(limit).all()
+    return db.query(models.Video)\
+             .order_by(models.Video.updated_at.desc())\
+             .offset(skip)\
+             .limit(limit)\
+             .all()
 
 # Helper functions to parse data
 def parse_duration(duration_str: str) -> int:

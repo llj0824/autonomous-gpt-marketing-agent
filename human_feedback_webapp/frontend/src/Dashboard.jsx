@@ -70,6 +70,8 @@ const Dashboard = () => {
   // State for storing the list of videos across all channels
   const [videos, setVideos] = useState([]);
   const [showChannels, setShowChannels] = useState(false);
+  // Add new state for loading
+  const [isAddingChannel, setIsAddingChannel] = useState(false);
 
   // Fetch initial data when component mounts
   useEffect(() => {
@@ -100,8 +102,8 @@ const Dashboard = () => {
 
   // Handle form submission for adding a new YouTube channel
   const handleAddChannel = async (e) => {
-    // Prevent the default form submission behavior that would refresh the page
     e.preventDefault();
+    setIsAddingChannel(true);
     try {
       // Extract channel handle from URL
       const channelHandle = extractChannelIdentifier(newChannelUrl);
@@ -111,12 +113,16 @@ const Dashboard = () => {
         params: { channel_handle: channelHandle }
       });
 
-      // Reset form and refresh channel list
+      // Reset form
       setNewChannelUrl('');
-      fetchChannels();
+      
+      // Refresh both channels and videos after adding a new channel
+      await Promise.all([fetchChannels(), fetchVideos()]);
 
     } catch (error) {
       console.error('Error adding channel:', error);
+    } finally {
+      setIsAddingChannel(false);
     }
   };
 
@@ -190,12 +196,13 @@ const Dashboard = () => {
                   type="submit"
                   variant="contained"
                   startIcon={<AddIcon />}
+                  disabled={isAddingChannel}
                   sx={{ 
                     borderRadius: '12px',
                     minWidth: '120px'
                   }}
                 >
-                  Add
+                  {isAddingChannel ? 'Processing...' : 'Add'}
                 </Button>
               </Box>
             </form>
