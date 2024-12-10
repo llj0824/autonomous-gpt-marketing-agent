@@ -94,9 +94,9 @@ chmod +x start_app.sh
    - Open Script Editor
    - Paste the following code:
 ```applescript
-tell application "Terminal"
-    set currentDir to "/path/to/human_feedback_webapp"
-    do script "cd '" & currentDir & "' && ./start_app.sh"
+tell application "iTerm"
+	set currentDir to "/Users/leojiang/Desktop/workspace/autonomous-gpt-marketing-agent/human_feedback_webapp"
+	do script "cd '" & currentDir & "' && ./start_app.sh"
 end tell
 ```
    - Go to File > Export
