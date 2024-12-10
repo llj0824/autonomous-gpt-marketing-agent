@@ -169,11 +169,18 @@ def create_highlight(db: Session, video_id: str, highlight_data: str, prompt: st
 
 def update_highlight(db: Session, highlight_id: str, highlight: schemas.HighlightUpdate):
     db_highlight = get_highlight(db, highlight_id)
+    if not db_highlight:
+        return None
+        
     update_data = highlight.dict(exclude_unset=True)
     update_data['reviewed_at'] = datetime.utcnow()
     
+    # Update the highlight with the new data
     for key, value in update_data.items():
         setattr(db_highlight, key, value)
+    
+    # Update the timestamp
+    db_highlight.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(db_highlight)
