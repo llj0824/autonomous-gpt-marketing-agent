@@ -8,6 +8,7 @@
 - [Development Guide](#development-guide)
 - [Technical Components](#technical-components)
 - [Testing](#testing)
+- [TODO](#todo)
 
 ## Overview
 The Human Feedback Web Application helps review and improve autonomously generated highlights from YouTube videos. It's designed to:
@@ -129,3 +130,8 @@ pytest -v -s human_feedback_webapp/backend/tests/test_youtube_service.py
 ---
 
 **Note**: This application requires both backend (FastAPI) and frontend (React) servers running simultaneously. The backend handles data processing and storage, while the frontend provides the user interface.
+
+## TODO
+1. app icon to start program on startup
+2. download video button
+3. video snippet from video (checks the video exists, else downloads video)
