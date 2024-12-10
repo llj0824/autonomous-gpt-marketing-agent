@@ -63,6 +63,49 @@ npm install
 npm start
 ```
 
+### Creating a Startup Application (macOS)
+For convenience, you can create a clickable application that starts both servers:
+
+1. Create a startup script:
+```bash
+# human_feedback_webapp/start_app.sh
+#!/bin/bash
+
+# Get the directory where the script is located
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Start the backend server in a new Terminal window
+osascript -e "tell application \"Terminal\"
+    do script \"cd '$DIR' && source venv/bin/activate && uvicorn backend.main:app --reload\"
+end tell"
+
+# Start the frontend in a new Terminal window
+osascript -e "tell application \"Terminal\"
+    do script \"cd '$DIR/frontend' && npm start\"
+end tell"
+```
+
+2. Make the script executable:
+```bash
+chmod +x start_app.sh
+```
+
+3. Create an AppleScript application:
+   - Open Script Editor
+   - Paste the following code:
+```applescript
+tell application "iTerm"
+	set currentDir to "/Users/leojiang/Desktop/workspace/autonomous-gpt-marketing-agent/human_feedback_webapp"
+	do script "cd '" & currentDir & "' && ./start_app.sh"
+end tell
+```
+   - Go to File > Export
+   - Choose "Application" as the File Format
+   - Save as "Human Feedback App"
+   - (Optional) Add an icon via right-click > Get Info
+
+Note: You may need to grant Terminal permissions for Finder and Automation access in System Settings > Privacy & Security when first running the app.
+
 ## Usage Guide
 
 ### Getting Started
