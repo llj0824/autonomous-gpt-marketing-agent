@@ -59,11 +59,22 @@ def get_db():
 
 @app.post("/add_channel", response_model=schemas.Channel)
 async def create_channel(channel_handle: str, db: Session = Depends(get_db)):
+    """Adds a channel and its recent videos"""
     try:
         logger.info(f"Attempting to create/update channel with handle: {channel_handle}")
-        result = await crud.create_or_update_channel(db, channel_handle)
-        logger.info(f"Successfully processed channel: {channel_handle}")
-        return result
+        
+        # Fetch channel and video data
+        channel_data = await youtube_service.fetch_channel_data(channel_handle)
+        
+        # Create/update channel
+        channel = await crud.create_or_update_channel(db, channel_handle)
+        
+        # Create/update each video
+        for video_data in channel_data['videos']:
+            await crud.create_or_update_video(db, video_data)
+        
+        return channel
+        
     except Exception as e:
         logger.error(f"Error processing channel {channel_handle}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -218,5 +229,29 @@ def read_transcript(video_id: str, db: Session = Depends(get_db)):
         "processed_transcript": transcript.processed_transcript
     }
 
+@app.post("/add_video")
+async def add_video(video_url: str, db: Session = Depends(get_db)):
+    """Adds a single video by URL"""
+    try:
+        # Extract video ID from URL
+        video_id = youtube_service.extract_video_id(video_url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+            
+        # Fetch video metadata
+        video_data = await youtube_service.fetch_video_metadata(video_id)
+        
+        # Create/update video and its channel
+        video = await crud.create_or_update_video(db, video_data)
+        
+        # Process video
+        await process_video(video.id, db)
+        
+        return {"message": "Video added successfully", "video_id": video.id}
+        
+    except Exception as e:
+        logger.error(f"Error adding video: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

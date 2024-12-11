@@ -72,6 +72,9 @@ const Dashboard = () => {
   const [showChannels, setShowChannels] = useState(false);
   // Add new state for loading
   const [isAddingChannel, setIsAddingChannel] = useState(false);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [showAddVideo, setShowAddVideo] = useState(false);
 
   // Fetch initial data when component mounts
   useEffect(() => {
@@ -126,6 +129,34 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddVideo = async (e) => {
+    e.preventDefault();
+    setIsAddingVideo(true);
+    
+    try {      
+      if (!newVideoUrl.trim()) {
+        throw new Error('Please enter a valid YouTube URL');
+      }
+
+      // Add video via API
+      await axios.post(`${API_BASE_URL}/add_video`, null, {
+        params: { video_url: newVideoUrl }
+      });
+
+      // Reset form and states
+      setNewVideoUrl('');
+      setShowAddVideo(false);
+  
+      // Refresh both channels and videos after adding a new video
+      await Promise.all([fetchChannels(), fetchVideos()]);
+    } catch (error) {
+      console.error('Error adding video:', error.message || 'Failed to add video. Please try again.');
+    } finally {
+      setIsAddingVideo(false);
+    }
+  };
+
+
   /**
    * Extracts the channel identifier from a YouTube channel URL
    * 
@@ -150,7 +181,7 @@ const Dashboard = () => {
 
   return (
     <DashboardContainer>
-      {/* Channel Management Section */}
+      {/* Content Management Section */}
       <ChannelSection>
         <Box
           onClick={() => setShowChannels(!showChannels)}
@@ -165,7 +196,7 @@ const Dashboard = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <YouTubeIcon color="error" />
             <Typography variant="h6">
-              Channel Management
+              Content Management
             </Typography>
           </Box>
           <ExpandMoreIcon
@@ -178,18 +209,26 @@ const Dashboard = () => {
 
         <Collapse in={showChannels}>
           <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            {/* Channel Management Section */}
             <form onSubmit={handleAddChannel}>
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                mb: 3,
+                alignItems: 'center',
+                width: '100%'
+              }}>
                 <TextField
                   fullWidth
-                  label="YouTube Channel URL"
+                  label="https://www.youtube.com/@hubermanlab"
                   value={newChannelUrl}
                   onChange={(e) => setNewChannelUrl(e.target.value)}
                   size="small"
                   sx={{ 
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '12px',
-                    }
+                    },
+                    flexGrow: 1,
                   }}
                 />
                 <Button
@@ -199,32 +238,77 @@ const Dashboard = () => {
                   disabled={isAddingChannel}
                   sx={{ 
                     borderRadius: '12px',
-                    minWidth: '120px'
+                    minWidth: '160px',
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  {isAddingChannel ? 'Processing...' : 'Add'}
+                  {isAddingChannel ? 'Processing...' : ' Channel'}
                 </Button>
               </Box>
             </form>
 
-            {channels.length > 0 && (
-              <List sx={{ mt: 2 }}>
-                {channels.map((channel) => (
-                  <ListItem
-                    key={channel.id}
-                    sx={{
+            {/* Video Management Section */}
+            <form onSubmit={handleAddVideo}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                mb: 3,
+                alignItems: 'center',
+                width: '100%'
+              }}>
+                <TextField
+                  fullWidth
+                  label="https://www.youtube.com/watch?v=lIo9FcrljDk"
+                  value={newVideoUrl}
+                  onChange={(e) => setNewVideoUrl(e.target.value)}
+                  size="small"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
                       borderRadius: '12px',
-                      mb: 1,
-                      backgroundColor: 'background.default',
-                    }}
-                  >
-                    <ListItemText
-                      primary={channel.name}
-                      secondary={channel.url}
-                    />
-                  </ListItem>
-                ))}
-              </List>
+                    },
+                    flexGrow: 1,
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  disabled={isAddingVideo}
+                  sx={{ 
+                    borderRadius: '12px',
+                    minWidth: '160px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {isAddingVideo ? 'Processing...' : ' Video'}
+                </Button>
+              </Box>
+            </form>
+
+            {/* Channel List */}
+            {channels.length > 0 && (
+              <>
+                <Typography variant="subtitle1" sx={{ mt: 4, mb: 2 }}>
+                  Managed Channels
+                </Typography>
+                <List>
+                  {channels.map((channel) => (
+                    <ListItem
+                      key={channel.id}
+                      sx={{
+                        borderRadius: '12px',
+                        mb: 1,
+                        backgroundColor: 'background.default',
+                      }}
+                    >
+                      <ListItemText
+                        primary={channel.name}
+                        secondary={channel.url}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </>
             )}
           </Box>
         </Collapse>
@@ -240,20 +324,6 @@ const Dashboard = () => {
         <Typography variant="h6">
           Video Queue
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            // TODO: Open modal in next step
-            console.log('Open add content modal');
-          }}
-          sx={{
-            boxShadow: 2,
-            borderRadius: '12px'
-          }}
-        >
-          Add Video
-        </Button>
       </Box>
       
       <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

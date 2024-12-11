@@ -281,3 +281,34 @@ def update_video_processing_status(db: Session, video_id: str, status: Processin
         logger.error(f"Failed to update video status for {video_id}: {str(e)}", exc_info=True)
         db.rollback()
         raise
+
+async def create_or_update_video(db: Session, video_data: dict) -> models.Video:
+    """Creates or updates a video and ensures its channel exists"""
+    # Check if channel exists, if not create it
+    channel = get_channel(db, video_data['channelId'])
+    if not channel:
+        channel = await create_or_update_channel(db, video_data['channelHandle'])
+    
+    # Create or update video
+    db_video = get_video(db, video_data['videoId'])
+    if db_video:
+        # Update existing video
+        for key, value in video_data.items():
+            setattr(db_video, key, value)
+    else:
+        # Create new video
+        db_video = models.Video(
+            id=video_data['videoId'],
+            channel_id=video_data['channelId'],
+            title=video_data['title'],
+            duration=video_data['duration'],
+            url=video_data['url'],
+            thumbnail_url=video_data['thumbnailUrl'],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        db.add(db_video)
+    
+    db.commit()
+    db.refresh(db_video)
+    return db_video
