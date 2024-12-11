@@ -259,7 +259,7 @@ class YoutubeService:
             return video_id_or_url
 
         url_match = re.search(
-            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})(?:&\S*)?',
             video_id_or_url
         )
         return url_match.group(1) if url_match else None
@@ -291,3 +291,37 @@ class YoutubeService:
             f"Description: {first_paragraph}\n\n"
             f"Timestamps:\n{timestamps}\n"
         )
+
+    async def fetch_video_metadata(self, video_id: str) -> Dict[str, Any]:
+        """Fetches metadata for a single video"""
+        # Use yt-dlp to get video info
+        ydl_opts = {
+            'skip_download': True,
+            'extract_flat': True,
+        }
+        
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            
+            return {
+                'videoId': info['id'],
+                'title': info['title'],
+                'channelId': info['uploader_id'], 
+                'channelHandle': info['uploader_id'],
+                'channelName': info['uploader'],  
+                'duration': info['duration'],
+                'url': f"https://www.youtube.com/watch?v={info['id']}",
+                'thumbnailUrl': info['thumbnail'],
+                # Additional valuable metadata we could track: 
+                # TODO: we can get the context block - using description + chapters from here.
+                'viewCount': info.get('view_count', 0),
+                'likeCount': info.get('like_count', 0),
+                'uploadDate': info.get('upload_date'),
+                'description': info.get('description', ''),
+                'tags': info.get('tags', []),
+                'categories': info.get('categories', []),
+                'language': info.get('language', 'en'),
+                'chapters': info.get('chapters', []),
+                'commentCount': info.get('comment_count', 0),
+                'channelFollowerCount': info.get('channel_follower_count', 0)
+            }
