@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -9,7 +9,8 @@ import {
   Dialog,
   IconButton,
   Chip,
-  Divider
+  Divider,
+  TextField
 } from '@mui/material';
 import {
   PlayArrow as PlayArrowIcon,
@@ -21,6 +22,11 @@ import {
 
 const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
+  const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    setComment('');
+  }, [highlight.id]);
 
   const timeMatch = highlight.content.match(/\[(\d{2}:\d{2})\s*->/);
   const startTime = timeMatch ? timeMatch[1] : '00:00';
@@ -33,6 +39,16 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
     const timeInSeconds = minutes * 60 + seconds;
     const videoUrl = `https://www.youtube.com/watch?v=${highlight.video_id}&t=${timeInSeconds}s`;
     window.open(videoUrl, '_blank');
+  };
+
+  const handleApprove = () => {
+    onApprove(highlight.id, comment);
+    setComment('');
+  };
+
+  const handleReject = () => {
+    onReject(highlight.id, comment);
+    setComment('');
   };
 
   return (
@@ -137,23 +153,36 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
         </Button>
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={<ApproveIcon />}
-          color="success"
-          onClick={() => onApprove(highlight.id)}
-        >
-          Approve
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<RejectIcon />}
-          color="error"
-          onClick={() => onReject(highlight.id)}
-        >
-          Reject
-        </Button>
+      <CardActions sx={{ flexDirection: 'column', alignItems: 'stretch', p: 2, gap: 2 }}>
+        <TextField
+          fullWidth
+          multiline
+          rows={2}
+          variant="outlined"
+          label="Review Comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          size="small"
+        />
+        
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button
+            variant="contained"
+            startIcon={<ApproveIcon />}
+            color="success"
+            onClick={handleApprove}
+          >
+            Approve
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<RejectIcon />}
+            color="error"
+            onClick={handleReject}
+          >
+            Reject
+          </Button>
+        </Box>
       </CardActions>
 
       <Dialog

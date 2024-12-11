@@ -140,7 +140,7 @@ def create_video(db: Session, video_metadata: dict):
 def get_highlight(db: Session, highlight_id: str):
     return db.query(models.Highlight).filter(models.Highlight.id == highlight_id).first()
 
-def create_highlight(db: Session, video_id: str, highlight_data: str):
+def create_highlight(db: Session, video_id: str, highlight_data: str, prompt: str = None, system_role: str = None):
     """
     Creates a new highlight entry with timestamps
     
@@ -148,12 +148,16 @@ def create_highlight(db: Session, video_id: str, highlight_data: str):
         db: Database session
         video_id: ID of the video this highlight belongs to
         highlight_data: Text content of the highlight
+        prompt: The transcript segment used to generate this highlight
+        system_role: The system role used to generate this highlight
     """
     now = datetime.now(timezone.utc)
     db_highlight = models.Highlight(
         id=str(uuid4()),
         video_id=video_id,
         content=highlight_data,
+        prompt=prompt,
+        system_role=system_role,
         created_at=now,
         updated_at=now
     )
@@ -165,18 +169,29 @@ def create_highlight(db: Session, video_id: str, highlight_data: str):
 
 def update_highlight(db: Session, highlight_id: str, highlight: schemas.HighlightUpdate):
     db_highlight = get_highlight(db, highlight_id)
+    if not db_highlight:
+        return None
+        
     update_data = highlight.dict(exclude_unset=True)
     update_data['reviewed_at'] = datetime.utcnow()
     
+    # Update the highlight with the new data
     for key, value in update_data.items():
         setattr(db_highlight, key, value)
+    
+    # Update the timestamp
+    db_highlight.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(db_highlight)
     return db_highlight
 
 def get_all_videos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Video).offset(skip).limit(limit).all()
+    return db.query(models.Video)\
+             .order_by(models.Video.updated_at.desc())\
+             .offset(skip)\
+             .limit(limit)\
+             .all()
 
 # Helper functions to parse data
 def parse_duration(duration_str: str) -> int:

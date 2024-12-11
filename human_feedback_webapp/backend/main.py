@@ -128,11 +128,13 @@ async def process_video(video_id: str, db: Session = Depends(get_db)):
         # 4. Generate and store highlights
         logger.info(f"Starting highlight generation for video {video_id}")
         highlights = await llm_api_utils.generate_highlights(processed_transcript)
-        for highlight_data in highlights:
+        for highlight in highlights:
             crud.create_highlight(
                 db=db,
                 video_id=video_id,
-                highlight_data=highlight_data
+                highlight_data=highlight['content'],
+                prompt=highlight['prompt'],
+                    system_role=highlight['system_role']
             )
         logger.info(f"Successfully generated and stored highlights for video {video_id}")
         

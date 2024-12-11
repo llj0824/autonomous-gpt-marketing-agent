@@ -1,11 +1,29 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+venv
 venv/*
 .venv/*
 .gitignore
-human_feedback_webapp/data/app.db
-human_feedback_webapp/data
 
 # Sample Data files
 youtubeChannel_ytInitialData_sample.json
 *.json
 
+# Database files 
+alembic
+alembic.ini
+alembic/*
+
+# startup file
+human_feedback_webapp/start_app.sh
+
+# misc files
+human_feedback_webapp/frontend/public
+human_feedback_webapp/backend/samples
+human_feedback_webapp/data/app.db
+human_feedback_webapp/data
+
+# ignore test files
+human_feedback_webapp/backend/tests
+human_feedback_webapp/backend/tests/*
+human_feedback_webapp/backend/pytests
+human_feedback_webapp/backend/pytests/*

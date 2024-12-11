@@ -129,10 +129,11 @@ const HighlightReview = () => {
     }
   };
 
-  const handleApprove = async (highlightId) => {
+  const handleApprove = async (highlightId, comment) => {
     try {
       await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { 
-        review_status: ReviewStatus.APPROVED
+        review_status: ReviewStatus.APPROVED,
+        review_comment: comment
       });
       // sync with database
       await fetchHighlights();
@@ -141,10 +142,11 @@ const HighlightReview = () => {
     }
   };
 
-  const handleReject = async (highlightId) => {
+  const handleReject = async (highlightId, comment) => {
     try {
       await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { 
-        review_status: ReviewStatus.REJECTED
+        review_status: ReviewStatus.REJECTED,
+        review_comment: comment
       });
       // sync with database
       await fetchHighlights();
