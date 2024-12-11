@@ -231,9 +231,30 @@ const Dashboard = () => {
       </ChannelSection>
 
       {/* Video Queue Section */}
-      <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3 }}>
-        Video Queue
-      </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 3 
+      }}>
+        <Typography variant="h6">
+          Video Queue
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            // TODO: Open modal in next step
+            console.log('Open add content modal');
+          }}
+          sx={{
+            boxShadow: 2,
+            borderRadius: '12px'
+          }}
+        >
+          Add Video
+        </Button>
+      </Box>
       
       <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {videos.map((video) => (

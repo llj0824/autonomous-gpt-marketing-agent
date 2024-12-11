@@ -175,13 +175,11 @@ pytest -v -s human_feedback_webapp/backend/tests/test_youtube_service.py
 **Note**: This application requires both backend (FastAPI) and frontend (React) servers running simultaneously. The backend handles data processing and storage, while the frontend provides the user interface.
 
 ## TODO
-0. add comment column to highlights.
-1. add source column to highlights 
-  -> what is used to generate it -> prompt & system prompt
 
-1. approve highlights view 
-  -> descending order by 
+1. Button to add video. 
 2. download video button
 3. video snippet from video (checks the video exists, else downloads video)
 * [Done] app icon to start program on startup
+* [Done] add system_prompt, prompt, review_comment column to highlights. Track how it was generated.
+
 
