@@ -11,7 +11,7 @@ The application uses SQLAlchemy for database operations and depends on
 various utility modules for YouTube data processing.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas, crud

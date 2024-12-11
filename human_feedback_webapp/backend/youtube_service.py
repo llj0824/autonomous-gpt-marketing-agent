@@ -306,9 +306,22 @@ class YoutubeService:
             return {
                 'videoId': info['id'],
                 'title': info['title'],
-                'channelId': info['channel_id'],
-                'channelHandle': info['channel_url'].split('/')[-1],
+                'channelId': info['uploader_id'], 
+                'channelHandle': info['uploader_id'],
+                'channelName': info['uploader'],  
                 'duration': info['duration'],
                 'url': f"https://www.youtube.com/watch?v={info['id']}",
                 'thumbnailUrl': info['thumbnail'],
+                # Additional valuable metadata we could track: 
+                # TODO: we can get the context block - using description + chapters from here.
+                'viewCount': info.get('view_count', 0),
+                'likeCount': info.get('like_count', 0),
+                'uploadDate': info.get('upload_date'),
+                'description': info.get('description', ''),
+                'tags': info.get('tags', []),
+                'categories': info.get('categories', []),
+                'language': info.get('language', 'en'),
+                'chapters': info.get('chapters', []),
+                'commentCount': info.get('comment_count', 0),
+                'channelFollowerCount': info.get('channel_follower_count', 0)
             }
