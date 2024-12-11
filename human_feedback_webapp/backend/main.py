@@ -242,7 +242,11 @@ async def add_video(video_url: str, db: Session = Depends(get_db)):
         video_data = await youtube_service.fetch_video_metadata(video_id)
         
         # Create/update video and its channel
-        video = await crud.create_or_update_video(db, video_data)
+        video = await crud.create_or_update_video(
+            db=db,
+            video_data=video_data,
+            fetch_recent_videos=False
+        )
         
         # Process video
         await process_video(video.id, db)

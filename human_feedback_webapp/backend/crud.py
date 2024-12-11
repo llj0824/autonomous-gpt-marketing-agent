@@ -40,14 +40,16 @@ def get_channel(db: Session, channel_id: str):
 def get_channels(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Channel).offset(skip).limit(limit).all()
 
-async def create_or_update_channel(db: Session, channel_handle: str):
+async def create_or_update_channel(db: Session, channel_handle: str, fetch_recent_videos: bool = True):
     """
     Creates or updates a channel and its videos by fetching data from YouTube.
-    Limited to MAX_VIDEOS_PER_CHANNEL most recent videos.
+    Limited to NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL most recent videos.
     
     Args:
         db: Database session
         channel_handle: YouTube channel handle (e.g. "@Bankless")
+        fetch_videos: If True, fetches up to NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL videos.
+                     If False, only creates/updates the channel.
     """
     logger.info(f"Starting create_or_update_channel for handle: {channel_handle}")
     try:
@@ -75,20 +77,22 @@ async def create_or_update_channel(db: Session, channel_handle: str):
             )
             db.add(db_channel)
         
-        logger.debug(f"Processing {len(channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL])} videos for channel")
-        for video in channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL]:
-            logger.debug(f"Processing video: {video['videoId']} - {video['title']}")
-            duration = parse_duration(video.get('duration', '0:00'))
-            db_video = models.Video(
-                id=video['videoId'],
-                channel_id=channel_handle,
-                title=video['title'],
-                duration=duration,
-                url=f"https://www.youtube.com/watch?v={video['videoId']}",
-                thumbnail_url=video.get('thumbnailUrl', '')
-            )
-            db.merge(db_video)
-            
+        # Only process additional videos if fetch_videos is True
+        if fetch_recent_videos:
+            logger.debug(f"Processing {len(channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL])} videos for channel")
+            for video in channel_data['videos'][:NUM_RECENT_VIDEOS_PULL_FROM_CHANNEL]:
+                logger.debug(f"Processing video: {video['videoId']} - {video['title']}")
+                duration = parse_duration(video.get('duration', '0:00'))
+                db_video = models.Video(
+                    id=video['videoId'],
+                    channel_id=channel_handle,
+                    title=video['title'],
+                    duration=duration,
+                    url=f"https://www.youtube.com/watch?v={video['videoId']}",
+                    thumbnail_url=video.get('thumbnailUrl', '')
+                )
+                db.merge(db_video)
+        
         db.commit()
         logger.info(f"Successfully created/updated channel: {channel_handle}")
         return db_channel
@@ -282,12 +286,16 @@ def update_video_processing_status(db: Session, video_id: str, status: Processin
         db.rollback()
         raise
 
-async def create_or_update_video(db: Session, video_data: dict) -> models.Video:
+async def create_or_update_video(db: Session, video_data: dict, fetch_recent_videos: bool = False) -> models.Video:
     """Creates or updates a video and ensures its channel exists"""
     # Check if channel exists, if not create it
     channel = get_channel(db, video_data['channelId'])
     if not channel:
-        channel = await create_or_update_channel(db, video_data['channelHandle'])
+        channel = await create_or_update_channel(
+            db=db,
+            channel_handle=video_data['channelHandle'],
+            fetch_recent_videos=False
+        )
     
     # Create or update video
     db_video = get_video(db, video_data['videoId'])
