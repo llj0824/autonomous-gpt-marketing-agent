@@ -11,13 +11,14 @@ database interactions for the application.
 """
 
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict
 from . import models, schemas
 from datetime import datetime, timezone
 from .youtube_service import YoutubeService
 from .enums import ProcessingStatus
 import logging
 from uuid import uuid4
+from sqlalchemy import func
 
 
 # Add at the top of the file, after the imports
@@ -320,3 +321,32 @@ async def create_or_update_video(db: Session, video_data: dict, fetch_recent_vid
     db.commit()
     db.refresh(db_video)
     return db_video
+
+def get_filtered_videos(db: Session, filter_status: str = 'all', skip: int = 0, limit: int = 100):
+    """
+    Returns videos filtered by their highlights' review status
+    
+    Args:
+        filter_status: 'all', 'approved', or 'pending'
+        skip: Pagination offset
+        limit: Number of records to return
+    """
+    query = db.query(models.Video)
+    
+    if filter_status != 'all':
+        # Subquery to get videos with highlights matching the filter
+        filtered_video_ids = (
+            db.query(models.Highlight.video_id)
+            .filter(models.Highlight.review_status == filter_status)
+            .distinct()
+            .subquery()
+        )
+        
+        query = query.join(filtered_video_ids, 
+                         models.Video.id == filtered_video_ids.c.video_id)
+    
+    return query.order_by(models.Video.updated_at.desc())\
+                .offset(skip)\
+                .limit(limit)\
+                .all()
+
