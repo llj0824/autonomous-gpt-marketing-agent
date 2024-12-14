@@ -23,7 +23,8 @@ import {
   Button,
   TextField,
   Box,
-  Collapse
+  Collapse,
+  Chip
 } from '@mui/material';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -31,6 +32,9 @@ import { styled } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
 import YouTubeIcon from '@mui/icons-material/YouTube';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PendingIcon from '@mui/icons-material/Pending';
+import ViewListIcon from '@mui/icons-material/ViewList';           // Standard list view
 
 const API_BASE_URL = 'http://localhost:8000'; // Adjust port if your FastAPI backend uses a different one
 
@@ -62,6 +66,35 @@ const VideoCard = styled(ListItem)(({ theme }) => ({
   },
 }));
 
+
+
+const FilterChips = ({ activeFilter, setActiveFilter }) => {
+  return (
+    <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+      <Chip
+        icon={<ViewListIcon />}
+        label="All"
+        onClick={() => setActiveFilter('all')}
+        color="primary"
+        variant={activeFilter === 'all' ? 'filled' : 'outlined'}
+      />
+      <Chip
+        icon={<CheckCircleIcon />}
+        label="Approved"
+        onClick={() => setActiveFilter('approved')}
+        color="success"
+        variant={activeFilter === 'approved' ? 'filled' : 'outlined'}
+      />
+      <Chip
+        icon={<PendingIcon />}
+        label="Pending"
+        onClick={() => setActiveFilter('pending')}
+        variant={activeFilter === 'pending' ? 'filled' : 'outlined'}
+      />
+    </Box>
+  );
+};
+
 const Dashboard = () => {
   // State for storing the list of YouTube channels from the backend
   const [channels, setChannels] = useState([]);
@@ -74,15 +107,13 @@ const Dashboard = () => {
   const [isAddingChannel, setIsAddingChannel] = useState(false);
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [isAddingVideo, setIsAddingVideo] = useState(false);
-  const [showAddVideo, setShowAddVideo] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
-  // Fetch initial data when component mounts
-  useEffect(() => {
-    // Get list of channels from /channels endpoint
-    fetchChannels();
-    // Get list of videos from /videos endpoint 
+   // Add useEffect to refetch when filter changes
+   useEffect(() => {
     fetchVideos();
-  }, []); // Empty dependency array means this only runs once on initial load
+  }, [activeFilter]); // Refetch when activeFilter changes
+
 
   const fetchChannels = async () => {
     try {
@@ -95,7 +126,11 @@ const Dashboard = () => {
 
   const fetchVideos = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/videos`);
+      const response = await axios.get(`${API_BASE_URL}/videos`, {
+        params: {
+          filter_status: activeFilter
+        }
+      });
       console.log('Fetched Videos response:', response.data);
       setVideos(response.data);
     } catch (error) {
@@ -145,7 +180,6 @@ const Dashboard = () => {
 
       // Reset form and states
       setNewVideoUrl('');
-      setShowAddVideo(false);
   
       // Refresh both channels and videos after adding a new video
       await Promise.all([fetchChannels(), fetchVideos()]);
@@ -324,6 +358,7 @@ const Dashboard = () => {
         <Typography variant="h6">
           Video Queue
         </Typography>
+        <FilterChips activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </Box>
       
       <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

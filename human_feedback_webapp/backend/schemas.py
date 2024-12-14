@@ -11,7 +11,7 @@ These schemas mirror the database models but are specifically for API interactio
 
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from .enums import ProcessingStatus, ReviewStatus
 
 # Highlight Schemas
@@ -46,6 +46,11 @@ class VideoBase(BaseModel):
 class VideoCreate(VideoBase):
     id: str
     channel_id: str
+
+class HighlightStats(BaseModel):
+    approved: int = 0
+    pending: int = 0
+    rejected: int = 0
 
 class Video(VideoBase):
     id: str

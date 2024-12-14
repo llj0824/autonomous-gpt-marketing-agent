@@ -11,13 +11,14 @@ database interactions for the application.
 """
 
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict
 from . import models, schemas
 from datetime import datetime, timezone
 from .youtube_service import YoutubeService
 from .enums import ProcessingStatus
 import logging
 from uuid import uuid4
+from sqlalchemy import func
 
 
 # Add at the top of the file, after the imports
@@ -190,13 +191,6 @@ def update_highlight(db: Session, highlight_id: str, highlight: schemas.Highligh
     db.refresh(db_highlight)
     return db_highlight
 
-def get_all_videos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Video)\
-             .order_by(models.Video.updated_at.desc())\
-             .offset(skip)\
-             .limit(limit)\
-             .all()
-
 # Helper functions to parse data
 def parse_duration(duration_str: str) -> int:
     """Converts duration string (HH:MM:SS or MM:SS) to seconds."""
@@ -320,3 +314,32 @@ async def create_or_update_video(db: Session, video_data: dict, fetch_recent_vid
     db.commit()
     db.refresh(db_video)
     return db_video
+
+def get_videos_filterBy_highlightStatus(db: Session, filter_status: str = 'all', skip: int = 0, limit: int = 100):
+    """
+    Returns videos filtered by their highlights' review status
+    First gets unique video IDs from highlights table, then fetches those videos.
+    
+    Args:
+        filter_status: 'all', 'approved', or 'pending'
+        skip: Pagination offset
+        limit: Number of records to return
+    """
+    # Case 1: return all videos
+    if filter_status == 'all':
+        return db.query(models.Video)\
+                 .order_by(models.Video.updated_at.desc())\
+                 .offset(skip)\
+                 .limit(limit)\
+                 .all()
+
+    # Case 2: return only videos containing approved or pending highlights
+    return db.query(models.Video)\
+             .join(models.Highlight)\
+             .filter(models.Highlight.review_status == filter_status.upper())\
+             .distinct()\
+             .order_by(models.Video.updated_at.desc())\
+             .offset(skip)\
+             .limit(limit)\
+             .all()
+

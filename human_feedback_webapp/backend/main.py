@@ -185,8 +185,41 @@ def get_video_status(video_id: str, db: Session = Depends(get_db)):
     }
 
 @app.get("/videos", response_model=List[schemas.Video])
-def read_all_videos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_all_videos(db, skip=skip, limit=limit)
+def read_all_videos(
+    filter_status: str = 'all',
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    """
+    Get videos with optional filtering by highlight status
+    
+    Args:
+        filter_status: 'all', 'approved', or 'pending'
+        skip: Pagination offset
+        limit: Number of records to return
+    """
+    try:
+        # Validate filter_status
+        if filter_status not in ['all', 'approved', 'pending']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid filter_status. Must be 'all', 'approved', or 'pending'"
+            )
+            
+        # Get filtered videos
+        videos = crud.get_videos_filterBy_highlightStatus(
+            db, 
+            filter_status=filter_status,
+            skip=skip,
+            limit=limit
+        )
+        
+        return videos
+        
+    except Exception as e:
+        logger.error(f"Error fetching videos: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/videos/{video_id}", response_model=schemas.Video)
 def read_video(video_id: str, db: Session = Depends(get_db)):
@@ -211,13 +244,6 @@ def read_highlights(video_id: str, db: Session = Depends(get_db)):
     if not db_video:
         raise HTTPException(status_code=404, detail="Video not found")
     return db_video.highlights
-
-@app.put("/highlights/{highlight_id}", response_model=schemas.Highlight)
-def update_highlight(highlight_id: str, highlight: schemas.HighlightUpdate, db: Session = Depends(get_db)):
-    db_highlight = crud.get_highlight(db, highlight_id=highlight_id)
-    if not db_highlight:
-        raise HTTPException(status_code=404, detail="Highlight not found")
-    return crud.update_highlight(db=db, highlight_id=highlight_id, highlight=highlight)
 
 @app.get("/videos/{video_id}/transcript")
 def read_transcript(video_id: str, db: Session = Depends(get_db)):
@@ -256,6 +282,14 @@ async def add_video(video_url: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error adding video: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/highlights/{highlight_id}", response_model=schemas.Highlight)
+def update_highlight(highlight_id: str, highlight: schemas.HighlightUpdate, db: Session = Depends(get_db)):
+    db_highlight = crud.get_highlight(db, highlight_id=highlight_id)
+    if not db_highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+    return crud.update_highlight(db=db, highlight_id=highlight_id, highlight=highlight)
     
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
