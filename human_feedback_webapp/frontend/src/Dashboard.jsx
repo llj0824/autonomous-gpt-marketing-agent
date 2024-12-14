@@ -75,7 +75,7 @@ const FilterChips = ({ activeFilter, setActiveFilter }) => {
         icon={<ViewListIcon />}
         label="All"
         onClick={() => setActiveFilter('all')}
-        color="Primary"
+        color="primary"
         variant={activeFilter === 'all' ? 'filled' : 'outlined'}
       />
       <Chip
@@ -109,13 +109,11 @@ const Dashboard = () => {
   const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
 
-  // Fetch initial data when component mounts
-  useEffect(() => {
-    // Get list of channels from /channels endpoint
-    fetchChannels();
-    // Get list of videos from /videos endpoint 
+   // Add useEffect to refetch when filter changes
+   useEffect(() => {
     fetchVideos();
-  }, []); // Empty dependency array means this only runs once on initial load
+  }, [activeFilter]); // Refetch when activeFilter changes
+
 
   const fetchChannels = async () => {
     try {
@@ -128,7 +126,11 @@ const Dashboard = () => {
 
   const fetchVideos = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/videos`);
+      const response = await axios.get(`${API_BASE_URL}/videos`, {
+        params: {
+          filter_status: activeFilter
+        }
+      });
       console.log('Fetched Videos response:', response.data);
       setVideos(response.data);
     } catch (error) {
