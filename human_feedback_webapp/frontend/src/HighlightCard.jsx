@@ -18,7 +18,8 @@ import {
   FormControlLabel,
   Radio,
   Stack,
-  Alert
+  Alert,
+  Slider
 } from '@mui/material';
 import {
   PlayArrow as PlayArrowIcon,
@@ -33,11 +34,81 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
+const formatTime = (seconds) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const HMSInput = ({ label, value, onChange }) => {
+  const [h, setH] = useState('00');
+  const [m, setM] = useState('00');
+  const [s, setS] = useState('00');
+
+  useEffect(() => {
+    onChange(`${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`);
+  }, [h, m, s]);
+
+  useEffect(() => {
+    if (value && value.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      const [hh, mm, ss] = value.split(':');
+      setH(hh);
+      setM(mm);
+      setS(ss);
+    }
+  }, [value]);
+
+  return (
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Typography variant="caption" display="block">
+        {label}
+      </Typography>
+      <TextField
+        size="small"
+        sx={{ width: 60 }}
+        value={h}
+        onChange={(e) => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2); 
+          setH(val);
+        }}
+        placeholder="HH"
+        inputProps={{ maxLength: 2 }}
+      />
+      <Typography variant="body2">:</Typography>
+      <TextField
+        size="small"
+        sx={{ width: 60 }}
+        value={m}
+        onChange={(e) => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setM(val);
+        }}
+        placeholder="MM"
+        inputProps={{ maxLength: 2 }}
+      />
+      <Typography variant="body2">:</Typography>
+      <TextField
+        size="small"
+        sx={{ width: 60 }}
+        value={s}
+        onChange={(e) => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setS(val);
+        }}
+        placeholder="SS"
+        inputProps={{ maxLength: 2 }}
+      />
+    </Box>
+  );
+};
+
 const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [comment, setComment] = useState('');
   const [downloadState, setDownloadState] = useState('idle');
   const [downloadError, setDownloadError] = useState(null);
+  const [timeRange, setTimeRange] = useState([0, video?.duration || 3600]); // Duration in seconds
 
   useEffect(() => {
     setComment('');
@@ -119,7 +190,7 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
 
   const DownloadButton = () => {
     const [anchorEl, setAnchorEl] = useState(null);
-    const [downloadType, setDownloadType] = useState('full');
+    const [downloadType, setDownloadType] = useState('clip');
     const [startTime, setStartTime] = useState('00:00:00');
     const [endTime, setEndTime] = useState('00:00:00');
 
@@ -158,7 +229,7 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
           }}
         >
           <Box sx={{ p: 2, width: 300 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
+            <Typography variant="subtitle1" sx={{ mb: 2 }}>
               Download Options
             </Typography>
             
@@ -166,38 +237,23 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
               value={downloadType}
               onChange={(e) => setDownloadType(e.target.value)}
             >
-              <FormControlLabel 
-                value="full" 
-                control={<Radio />} 
-                label="Full Video" 
-              />
-              <FormControlLabel 
-                value="clip" 
-                control={<Radio />} 
-                label="Time Range" 
-              />
+              <FormControlLabel value="clip" control={<Radio />} label="Time Range" />
+              {downloadType === 'clip' && (
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  <HMSInput
+                    label="Start"
+                    value={startTime}
+                    onChange={(val) => setStartTime(val)}
+                  />
+                  <HMSInput
+                    label="End"
+                    value={endTime}
+                    onChange={(val) => setEndTime(val)}
+                  />
+                </Stack>
+              )}
+              <FormControlLabel value="full" control={<Radio />} label="Full Video" />
             </RadioGroup>
-
-            {downloadType === 'clip' && (
-              <Stack spacing={2} sx={{ mt: 2 }}>
-                <TextField
-                  label="Start Time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  placeholder="HH:MM:SS"
-                  size="small"
-                  inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
-                />
-                <TextField
-                  label="End Time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  placeholder="HH:MM:SS"
-                  size="small"
-                  inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
-                />
-              </Stack>
-            )}
 
             {downloadError && (
               <Alert severity="error" sx={{ mt: 2 }}>
@@ -223,6 +279,94 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
           </Box>
         </Popover>
       </>
+    );
+  };
+
+  const TimeSelector = ({ value, onChange, duration }) => {
+    const [inputMode, setInputMode] = useState('slider');
+    
+    const presets = [
+      { label: 'Last 5 min', getValue: (duration) => [Math.max(0, duration - 300), duration] },
+      { label: 'First 5 min', getValue: () => [0, 300] },
+      { label: 'Middle 5 min', getValue: (duration) => [duration/2 - 150, duration/2 + 150] },
+    ];
+
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Button
+            size="small"
+            variant={inputMode === 'slider' ? 'contained' : 'outlined'}
+            onClick={() => setInputMode('slider')}
+          >
+            Slider
+          </Button>
+          <Button
+            size="small"
+            variant={inputMode === 'manual' ? 'contained' : 'outlined'}
+            onClick={() => setInputMode('manual')}
+          >
+            Manual
+          </Button>
+        </Stack>
+
+        <Stack spacing={2}>
+          {inputMode === 'slider' ? (
+            <>
+              <Typography>
+                {formatTime(value[0])} - {formatTime(value[1])}
+              </Typography>
+              <Slider
+                value={value}
+                onChange={(_, newValue) => onChange(newValue)}
+                valueLabelDisplay="auto"
+                valueLabelFormat={formatTime}
+                min={0}
+                max={duration}
+              />
+            </>
+          ) : (
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                size="small"
+                label="Start"
+                value={formatTime(value[0])}
+                onChange={(e) => {
+                  const [h, m, s] = e.target.value.split(':').map(Number);
+                  const seconds = h * 3600 + m * 60 + s;
+                  onChange([seconds, value[1]]);
+                }}
+                placeholder="HH:MM:SS"
+              />
+              <Typography>to</Typography>
+              <TextField
+                size="small"
+                label="End"
+                value={formatTime(value[1])}
+                onChange={(e) => {
+                  const [h, m, s] = e.target.value.split(':').map(Number);
+                  const seconds = h * 3600 + m * 60 + s;
+                  onChange([value[0], seconds]);
+                }}
+                placeholder="HH:MM:SS"
+              />
+            </Stack>
+          )}
+
+          <Stack direction="row" spacing={1}>
+            {presets.map((preset) => (
+              <Button
+                key={preset.label}
+                size="small"
+                variant="outlined"
+                onClick={() => onChange(preset.getValue(duration))}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </Stack>
+        </Stack>
+      </Box>
     );
   };
 
