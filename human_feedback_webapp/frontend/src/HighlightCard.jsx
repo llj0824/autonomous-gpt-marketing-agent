@@ -18,6 +18,7 @@ import {
   FormControlLabel,
   Radio,
   Stack,
+  Alert
 } from '@mui/material';
 import {
   PlayArrow as PlayArrowIcon,
@@ -36,6 +37,7 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [comment, setComment] = useState('');
   const [downloadState, setDownloadState] = useState('idle');
+  const [downloadError, setDownloadError] = useState(null);
 
   useEffect(() => {
     setComment('');
@@ -64,88 +66,85 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
     setComment('');
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (type, startTime = null, endTime = null) => {
     try {
       setDownloadState('loading');
+      setDownloadError(null);
       
-      const response = await axios.get(`${API_BASE_URL}/videos/${highlight.video_id}/download`, {
-        responseType: 'blob'
-      });
+      let response;
+      let filename;
+
+      if (type === 'full') {
+        response = await axios.get(`${API_BASE_URL}/videos/${highlight.video_id}/download`, {
+          responseType: 'blob'
+        });
+        filename = `${video.channel_id}_${video.title}.mp4`;
+      } else {
+        // Validate time format
+        const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+        if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+          throw new Error('Invalid time format. Use HH:MM:SS');
+        }
+
+        response = await axios.get(
+          `${API_BASE_URL}/videos/${highlight.video_id}/download_clip`, {
+            params: { start_time: startTime, end_time: endTime },
+            responseType: 'blob'
+          }
+        );
+        filename = `${video.channel_id}_${video.title}_clip_${startTime}-${endTime}.mp4`;
+      }
+
+      // Create safe filename
+      const safeFilename = filename.replace(/[^a-z0-9.]/gi, '_');
       
-      // Sanitize filename parts
-      const safeChannelName = video.channel_id.replace(/[@<>:"/\\|?*]/g, '');
-      const safeTitle = video.title.replace(/[@<>:"/\\|?*]/g, '');
-      const filename = `${safeChannelName}_${safeTitle}_${highlight.id}.mp4`;
-      
+      // Trigger download
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', safeFilename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
 
       setDownloadState('complete');
-      setTimeout(() => setDownloadState('idle'), 1500);
+      setTimeout(() => setDownloadState('idle'), 2000);
     } catch (error) {
       console.error('Download failed:', error);
+      setDownloadError(error.message);
       setDownloadState('idle');
     }
   };
 
   const DownloadButton = () => {
     const [anchorEl, setAnchorEl] = useState(null);
-    const [downloadType, setDownloadType] = useState('custom');
+    const [downloadType, setDownloadType] = useState('full');
     const [startTime, setStartTime] = useState('00:00:00');
     const [endTime, setEndTime] = useState('00:00:00');
 
-    const handleClick = (event) => {
-      setAnchorEl(event.currentTarget);
-    };
-
     const handleClose = () => {
       setAnchorEl(null);
+      setDownloadError(null);
     };
 
     const open = Boolean(anchorEl);
 
-    let icon;
-    let tooltipTitle = "Download Video";
-
-    switch (downloadState) {
-      case 'loading':
-        icon = <CircularProgress size={20} color="inherit" />;
-        tooltipTitle = "Downloading...";
-        break;
-      case 'complete':
-        icon = <CheckIcon />;
-        tooltipTitle = "Download Complete!";
-        break;
-      default:
-        icon = <DownloadIcon />;
-    }
-
     return (
       <>
-        <Tooltip title={tooltipTitle}>
+        <Tooltip title={downloadState === 'loading' ? 'Downloading...' : 'Download Video'}>
           <IconButton
             color="primary"
-            onClick={handleClick}
+            onClick={(e) => setAnchorEl(e.currentTarget)}
             disabled={downloadState !== 'idle'}
-            sx={{ 
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': { 
-                backgroundColor: 'primary.light',
-                color: 'primary.contrastText',
-                transform: downloadState === 'idle' ? 'scale(1.1)' : 'none'
-              },
-              '&:active': {
-                transform: downloadState === 'idle' ? 'scale(0.95)' : 'none'
-              }
-            }}
           >
-            {icon}
+            {downloadState === 'loading' ? (
+              <CircularProgress size={24} />
+            ) : downloadState === 'complete' ? (
+              <CheckIcon />
+            ) : (
+              <DownloadIcon />
+            )}
           </IconButton>
         </Tooltip>
 
@@ -157,63 +156,66 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
             vertical: 'bottom',
             horizontal: 'right',
           }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
         >
           <Box sx={{ p: 2, width: 300 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
               Download Options
             </Typography>
+            
             <RadioGroup
               value={downloadType}
               onChange={(e) => setDownloadType(e.target.value)}
             >
               <FormControlLabel 
-                value="custom" 
-                control={<Radio />} 
-                label="Time Range" 
-              />
-              {downloadType === 'custom' && (
-              <Stack spacing={2} sx={{ mt: 2 }}>
-                <Box>
-                  <Typography variant="caption" display="block" gutterBottom>
-                    Start Time
-                  </Typography>
-                  <TextField
-                    size="small"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    placeholder="HH:MM:SS"
-                    inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="caption" display="block" gutterBottom>
-                    End Time
-                  </Typography>
-                  <TextField
-                    size="small"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    placeholder="HH:MM:SS"
-                    inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
-                  />
-                </Box>
-              </Stack>
-            )}
-              <FormControlLabel 
                 value="full" 
                 control={<Radio />} 
                 label="Full Video" 
               />
+              <FormControlLabel 
+                value="clip" 
+                control={<Radio />} 
+                label="Time Range" 
+              />
             </RadioGroup>
+
+            {downloadType === 'clip' && (
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <TextField
+                  label="Start Time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  placeholder="HH:MM:SS"
+                  size="small"
+                  inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
+                />
+                <TextField
+                  label="End Time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  placeholder="HH:MM:SS"
+                  size="small"
+                  inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
+                />
+              </Stack>
+            )}
+
+            {downloadError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {downloadError}
+              </Alert>
+            )}
 
             <Button
               fullWidth
               variant="contained"
-              onClick={handleDownload}
+              onClick={() => {
+                handleDownload(
+                  downloadType,
+                  downloadType === 'clip' ? startTime : null,
+                  downloadType === 'clip' ? endTime : null
+                );
+                handleClose();
+              }}
               sx={{ mt: 2 }}
             >
               Download

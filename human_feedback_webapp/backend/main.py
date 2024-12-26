@@ -11,7 +11,7 @@ The application uses SQLAlchemy for database operations and depends on
 various utility modules for YouTube data processing.
 """
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas, crud
@@ -27,6 +27,7 @@ from yt_dlp import YoutubeDL
 import os
 from fastapi.responses import FileResponse
 import re
+from datetime import datetime
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -315,6 +316,7 @@ async def download_video(video_id: str, db: Session = Depends(get_db)):
         if not os.path.exists(filepath):
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'cookiesfrombrowser': 'chrome',
                 'outtmpl': filepath,
                 'quiet': True,
                 'merge_output_format': 'mp4'
@@ -326,6 +328,61 @@ async def download_video(video_id: str, db: Session = Depends(get_db)):
         
     except Exception as e:
         logger.error(f"Error downloading video {video_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/videos/{video_id}/download_clip")
+async def download_video_clip(
+    video_id: str, 
+    start_time: str = Query(..., regex=r"^\d{2}:\d{2}:\d{2}$"),
+    end_time: str = Query(..., regex=r"^\d{2}:\d{2}:\d{2}$"),
+    db: Session = Depends(get_db)
+):
+    """
+    Download a specific clip of the video.
+
+    Expected time format for `start_time` and `end_time`: HH:MM:SS
+    e.g. 00:01:10 (for 1 minute and 10 seconds in), up to 99:59:59 if needed.
+    """
+    try:
+        # Validate video existence
+        video = crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        # Create downloads directory
+        downloads_dir = "video_highlight_downloads"
+        os.makedirs(downloads_dir, exist_ok=True)
+        
+        # Create unique filename for the clip
+        safe_title = sanitize_filename(video.title)
+        filename = f"{video_id}_clip_{start_time}-{end_time}_{safe_title}.mp4"
+        filepath = os.path.join(downloads_dir, filename)
+        
+        if not os.path.exists(filepath):
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'outtmpl': filepath,
+                'quiet': True,
+                'merge_output_format': 'mp4',
+                'download_sections': f"*{start_time}-{end_time}",
+                'force_keyframes_at_cuts': True,  # Ensures clean cuts
+                # Add cookies from browser - using Chrome as an example
+                'cookies_from_browser': ('chrome',),
+                # You can also add a user-agent to help avoid detection
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+        
+        return FileResponse(
+            filepath, 
+            media_type='video/mp4',
+            filename=filename
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading clip for video {video_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def sanitize_filename(filename):
