@@ -12,7 +12,12 @@ import {
   Divider,
   TextField,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  Popover,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Stack,
 } from '@mui/material';
 import {
   PlayArrow as PlayArrowIcon,
@@ -90,6 +95,21 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
   };
 
   const DownloadButton = () => {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [downloadType, setDownloadType] = useState('custom');
+    const [startTime, setStartTime] = useState('00:00:00');
+    const [endTime, setEndTime] = useState('00:00:00');
+
+    const handleClick = (event) => {
+      setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+      setAnchorEl(null);
+    };
+
+    const open = Boolean(anchorEl);
+
     let icon;
     let tooltipTitle = "Download Video";
 
@@ -107,26 +127,100 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
     }
 
     return (
-      <Tooltip title={tooltipTitle}>
-        <IconButton
-          color="primary"
-          onClick={handleDownload}
-          disabled={downloadState !== 'idle'}
-          sx={{ 
-            transition: 'all 0.2s ease-in-out',
-            '&:hover': { 
-              backgroundColor: 'primary.light',
-              color: 'primary.contrastText',
-              transform: downloadState === 'idle' ? 'scale(1.1)' : 'none'
-            },
-            '&:active': {
-              transform: downloadState === 'idle' ? 'scale(0.95)' : 'none'
-            }
+      <>
+        <Tooltip title={tooltipTitle}>
+          <IconButton
+            color="primary"
+            onClick={handleClick}
+            disabled={downloadState !== 'idle'}
+            sx={{ 
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { 
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+                transform: downloadState === 'idle' ? 'scale(1.1)' : 'none'
+              },
+              '&:active': {
+                transform: downloadState === 'idle' ? 'scale(0.95)' : 'none'
+              }
+            }}
+          >
+            {icon}
+          </IconButton>
+        </Tooltip>
+
+        <Popover
+          open={open}
+          anchorEl={anchorEl}
+          onClose={handleClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
           }}
         >
-          {icon}
-        </IconButton>
-      </Tooltip>
+          <Box sx={{ p: 2, width: 300 }}>
+            <Typography variant="subtitle1" sx={{ mb: 2 }}>
+              Download Options
+            </Typography>
+            <RadioGroup
+              value={downloadType}
+              onChange={(e) => setDownloadType(e.target.value)}
+            >
+              <FormControlLabel 
+                value="custom" 
+                control={<Radio />} 
+                label="Time Range" 
+              />
+              {downloadType === 'custom' && (
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <Box>
+                  <Typography variant="caption" display="block" gutterBottom>
+                    Start Time
+                  </Typography>
+                  <TextField
+                    size="small"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    placeholder="HH:MM:SS"
+                    inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
+                  />
+                </Box>
+                <Box>
+                  <Typography variant="caption" display="block" gutterBottom>
+                    End Time
+                  </Typography>
+                  <TextField
+                    size="small"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    placeholder="HH:MM:SS"
+                    inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
+                  />
+                </Box>
+              </Stack>
+            )}
+              <FormControlLabel 
+                value="full" 
+                control={<Radio />} 
+                label="Full Video" 
+              />
+            </RadioGroup>
+
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleDownload}
+              sx={{ mt: 2 }}
+            >
+              Download
+            </Button>
+          </Box>
+        </Popover>
+      </>
     );
   };
 
