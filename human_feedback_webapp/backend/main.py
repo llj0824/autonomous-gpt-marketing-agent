@@ -23,6 +23,10 @@ from .youtube_service import YoutubeService
 from .enums import ProcessingStatus
 from .llm_api_utils import LLM_API_Utils
 import traceback
+from yt_dlp import YoutubeDL
+import os
+from fastapi.responses import FileResponse
+import re
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -291,5 +295,47 @@ def update_highlight(highlight_id: str, highlight: schemas.HighlightUpdate, db: 
         raise HTTPException(status_code=404, detail="Highlight not found")
     return crud.update_highlight(db=db, highlight_id=highlight_id, highlight=highlight)
     
+@app.get("/videos/{video_id}/download")
+async def download_video(video_id: str, db: Session = Depends(get_db)):
+    """Download video using yt-dlp"""
+    try:
+        # Get video details
+        video = crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+            
+        # Create downloads directory if it doesn't exist
+        downloads_dir = "video_highlight_downloads"
+        os.makedirs(downloads_dir, exist_ok=True)
+        
+        # Use video_id for internal filepath
+        filepath = os.path.join(downloads_dir, f"{video_id}.mp4")
+        
+        # Download if file doesn't exist
+        if not os.path.exists(filepath):
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'outtmpl': filepath,
+                'quiet': True,
+                'merge_output_format': 'mp4'
+            }
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+        
+        return FileResponse(filepath, media_type='video/mp4')
+        
+    except Exception as e:
+        logger.error(f"Error downloading video {video_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def sanitize_filename(filename):
+    """Remove invalid characters from filename"""
+    # Replace invalid characters with underscore
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    # Remove any non-ASCII characters
+    filename = ''.join(char for char in filename if ord(char) < 128)
+    return filename.strip()
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -37,3 +37,6 @@ yarn-error.log*
 
 # Database
 app_db.session.sql
+
+# Multi-media
+human_feedback_webapp/downloads/

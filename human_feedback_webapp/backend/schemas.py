@@ -47,11 +47,6 @@ class VideoCreate(VideoBase):
     id: str
     channel_id: str
 
-class HighlightStats(BaseModel):
-    approved: int = 0
-    pending: int = 0
-    rejected: int = 0
-
 class Video(VideoBase):
     id: str
     channel_id: str

@@ -10,19 +10,27 @@ import {
   IconButton,
   Chip,
   Divider,
-  TextField
+  TextField,
+  CircularProgress,
+  Tooltip
 } from '@mui/material';
 import {
   PlayArrow as PlayArrowIcon,
   Article as ArticleIcon,
   ThumbUp as ApproveIcon,
   ThumbDown as RejectIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Download as DownloadIcon,
+  Check as CheckIcon
 } from '@mui/icons-material';
+import axios from 'axios';
 
-const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
+const API_BASE_URL = 'http://localhost:8000';
+
+const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [comment, setComment] = useState('');
+  const [downloadState, setDownloadState] = useState('idle');
 
   useEffect(() => {
     setComment('');
@@ -51,6 +59,77 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
     setComment('');
   };
 
+  const handleDownload = async () => {
+    try {
+      setDownloadState('loading');
+      
+      const response = await axios.get(`${API_BASE_URL}/videos/${highlight.video_id}/download`, {
+        responseType: 'blob'
+      });
+      
+      // Sanitize filename parts
+      const safeChannelName = video.channel_id.replace(/[@<>:"/\\|?*]/g, '');
+      const safeTitle = video.title.replace(/[@<>:"/\\|?*]/g, '');
+      const filename = `${safeChannelName}_${safeTitle}_${highlight.id}.mp4`;
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setDownloadState('complete');
+      setTimeout(() => setDownloadState('idle'), 1500);
+    } catch (error) {
+      console.error('Download failed:', error);
+      setDownloadState('idle');
+    }
+  };
+
+  const DownloadButton = () => {
+    let icon;
+    let tooltipTitle = "Download Video";
+
+    switch (downloadState) {
+      case 'loading':
+        icon = <CircularProgress size={20} color="inherit" />;
+        tooltipTitle = "Downloading...";
+        break;
+      case 'complete':
+        icon = <CheckIcon />;
+        tooltipTitle = "Download Complete!";
+        break;
+      default:
+        icon = <DownloadIcon />;
+    }
+
+    return (
+      <Tooltip title={tooltipTitle}>
+        <IconButton
+          color="primary"
+          onClick={handleDownload}
+          disabled={downloadState !== 'idle'}
+          sx={{ 
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': { 
+              backgroundColor: 'primary.light',
+              color: 'primary.contrastText',
+              transform: downloadState === 'idle' ? 'scale(1.1)' : 'none'
+            },
+            '&:active': {
+              transform: downloadState === 'idle' ? 'scale(0.95)' : 'none'
+            }
+          }}
+        >
+          {icon}
+        </IconButton>
+      </Tooltip>
+    );
+  };
+
   return (
     <Card 
       sx={{ 
@@ -70,14 +149,17 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
               {summary}
             </Typography>
           </Box>
-          <Chip
-            icon={<PlayArrowIcon />}
-            label={`Watch from ${startTime}`}
-            clickable
-            color="primary"
-            variant="outlined"
-            onClick={handleWatchFromTimestamp}
-          />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Chip
+              icon={<PlayArrowIcon />}
+              label={`Watch from ${startTime}`}
+              clickable
+              color="primary"
+              variant="outlined"
+              onClick={handleWatchFromTimestamp}
+            />
+            <DownloadButton />
+          </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -143,14 +225,15 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
           );
         })}
 
-        <Button
-          startIcon={<ArticleIcon />}
-          variant="outlined"
-          onClick={() => setShowTranscript(true)}
-          sx={{ mt: 2 }}
-        >
-          Show Transcript Context
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+          <Button
+            startIcon={<ArticleIcon />}
+            variant="outlined"
+            onClick={() => setShowTranscript(true)}
+          >
+            Show Transcript Context
+          </Button>
+        </Box>
       </CardContent>
 
       <CardActions sx={{ flexDirection: 'column', alignItems: 'stretch', p: 2, gap: 2 }}>
