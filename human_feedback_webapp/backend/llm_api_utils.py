@@ -14,8 +14,8 @@ from config import Config
 
 class LLM_API_Utils:
     DEFAULT_PARTITIONS = 8
-    # GPT_4o = "chatgpt-4o-latest"
-    GPT_4o = "gpt-4o-mini"
+    GPT_4o = "chatgpt-4o-latest"
+    # GPT_4o = "gpt-4o-mini"
     LINES_PER_PARTITION = 60  # Approximately 5 minutes per chunk (5s per line)
 
     def __init__(self):

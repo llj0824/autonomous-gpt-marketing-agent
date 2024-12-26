@@ -305,33 +305,24 @@ async def download_video(video_id: str, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Video not found")
             
         # Create downloads directory if it doesn't exist
-        downloads_dir = "downloads"
+        downloads_dir = "video_highlight_downloads"
         os.makedirs(downloads_dir, exist_ok=True)
         
-        # Create filename
-        safe_channel_name = sanitize_filename(video.channel.name)
-        safe_video_name = sanitize_filename(video.title)
-        filename = f"{safe_channel_name}-{safe_video_name}-{video_id}.mp4"
-        filepath = os.path.join(downloads_dir, filename)
-        
-        # Download options
-        ydl_opts = {
-            'format': 'best[ext=mp4]',
-            'outtmpl': filepath,
-            'quiet': True,
-        }
+        # Use video_id for internal filepath
+        filepath = os.path.join(downloads_dir, f"{video_id}.mp4")
         
         # Download if file doesn't exist
         if not os.path.exists(filepath):
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'outtmpl': filepath,
+                'quiet': True,
+                'merge_output_format': 'mp4'
+            }
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
         
-        # Return file
-        return FileResponse(
-            filepath,
-            media_type='video/mp4',
-            filename=filename
-        )
+        return FileResponse(filepath, media_type='video/mp4')
         
     except Exception as e:
         logger.error(f"Error downloading video {video_id}: {str(e)}")

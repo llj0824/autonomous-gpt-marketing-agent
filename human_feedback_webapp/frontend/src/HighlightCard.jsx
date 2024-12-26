@@ -23,8 +23,11 @@ import {
   Download as DownloadIcon,
   Check as CheckIcon
 } from '@mui/icons-material';
+import axios from 'axios';
 
-const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
+const API_BASE_URL = 'http://localhost:8000';
+
+const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [comment, setComment] = useState('');
   const [downloadState, setDownloadState] = useState('idle');
@@ -59,17 +62,17 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
   const handleDownload = async () => {
     try {
       setDownloadState('loading');
-      const response = await fetch(`/api/videos/${highlight.video_id}/download`);
-      if (!response.ok) throw new Error('Download failed');
       
-      // Get filename from response headers if available
-      const contentDisposition = response.headers.get('content-disposition');
-      const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
-      const filename = filenameMatch ? filenameMatch[1] : 'video.mp4';
+      const response = await axios.get(`${API_BASE_URL}/videos/${highlight.video_id}/download`, {
+        responseType: 'blob'
+      });
       
-      // Create download link
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Sanitize filename parts
+      const safeChannelName = video.channel_id.replace(/[@<>:"/\\|?*]/g, '');
+      const safeTitle = video.title.replace(/[@<>:"/\\|?*]/g, '');
+      const filename = `${safeChannelName}_${safeTitle}_${highlight.id}.mp4`;
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -78,13 +81,11 @@ const HighlightCard = ({ highlight, index, onApprove, onReject }) => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      // Show completion state briefly
       setDownloadState('complete');
       setTimeout(() => setDownloadState('idle'), 1500);
     } catch (error) {
       console.error('Download failed:', error);
       setDownloadState('idle');
-      // You might want to add a proper error notification here
     }
   };
 

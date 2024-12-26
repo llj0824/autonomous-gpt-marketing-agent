@@ -198,6 +198,7 @@ const HighlightReview = () => {
       ) : (
         <HighlightCard
           highlight={highlights[0]}
+          video={video}
           onApprove={handleApprove}
           onReject={handleReject}
         />
