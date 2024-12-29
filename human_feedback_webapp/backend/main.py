@@ -330,6 +330,11 @@ async def download_video(video_id: str, db: Session = Depends(get_db)):
         logger.error(f"Error downloading video {video_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def time_to_seconds(time_str):
+    """Convert HH:MM:SS to seconds"""
+    h, m, s = map(int, time_str.split(':'))
+    return h * 3600 + m * 60 + s
+
 @app.get("/videos/{video_id}/download_clip")
 async def download_video_clip(
     video_id: str, 
@@ -359,12 +364,22 @@ async def download_video_clip(
         filepath = os.path.join(downloads_dir, filename)
         
         if not os.path.exists(filepath):
+            # Convert time strings to seconds for the download_ranges callback
+            start_seconds = time_to_seconds(start_time)
+            end_seconds = time_to_seconds(end_time)
+            
+            def download_range_callback(info_dict, ydl):
+                return [{
+                    'start_time': start_seconds,
+                    'end_time': end_seconds,
+                }]
+
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                 'outtmpl': filepath,
                 'quiet': True,
                 'merge_output_format': 'mp4',
-                'download_sections': f"*{start_time}-{end_time}",
+                'download_ranges': download_range_callback,
                 'force_keyframes_at_cuts': True,  # Ensures clean cuts
                 # Add cookies from browser - using Chrome as an example
                 'cookies_from_browser': ('chrome',),
