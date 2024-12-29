@@ -334,14 +334,13 @@ def time_to_seconds(time_str):
     """Convert HH:MM:SS to seconds"""
     h, m, s = map(int, time_str.split(':'))
     return h * 3600 + m * 60 + s
-
 @app.get("/videos/{video_id}/download_clip")
 async def download_video_clip(
     video_id: str, 
     start_time: str = Query(..., regex=r"^\d{2}:\d{2}:\d{2}$"),
     end_time: str = Query(..., regex=r"^\d{2}:\d{2}:\d{2}$"),
     db: Session = Depends(get_db)
-):
+):  # Note: This endpoint does not work when using VeePN VPN service
     """
     Download a specific clip of the video.
 
