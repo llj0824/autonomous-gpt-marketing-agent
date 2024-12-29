@@ -19,7 +19,12 @@ class HighlightBase(BaseModel):
     id: str
     video_id: str
     content: str
+    prompt: Optional[str] = None
+    system_role: Optional[str] = None
+    review_comment: Optional[str] = None
     review_status: Optional[ReviewStatus] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class HighlightCreate(BaseModel):
     video_id: str
