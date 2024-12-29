@@ -522,8 +522,8 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
         </Box>
         <Divider />
         <Box sx={{ p: 3 }}>
-          <Typography variant="body2">
-            Transcript context will be displayed here...
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+            {highlight.prompt || 'No transcript context available.'}
           </Typography>
         </Box>
       </Dialog>
