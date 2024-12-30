@@ -40,3 +40,4 @@ app_db.session.sql
 
 # Multi-media
 human_feedback_webapp/downloads/
+human_feedback_webapp/video_highlight_downloads/
