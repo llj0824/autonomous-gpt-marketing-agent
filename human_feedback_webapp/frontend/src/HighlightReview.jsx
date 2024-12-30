@@ -18,11 +18,16 @@ import {
   Typography,
   Button,
   Box,
-  Dialog
+  Dialog,
+  Chip
 } from '@mui/material';
 import axios from 'axios';
 import { styled } from '@mui/material/styles';
 import ArticleIcon from '@mui/icons-material/Article';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PendingIcon from '@mui/icons-material/Pending';
+import PublishIcon from '@mui/icons-material/Publish';
 
 import TranscriptPanel from './TranscriptPanel';
 import HighlightCard from './HighlightCard';
@@ -61,7 +66,8 @@ const HighlightReview = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [rawTranscript, setRawTranscript] = useState('');
   const [processedTranscript, setProcessedTranscript] = useState('');
-  const [highlights, setHighlights] = useState([]);
+  const [activeFilter, setActiveFilter] = useState('pending');
+  const [allHighlights, setAllHighlights] = useState([]);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
 
   useEffect(() => {
@@ -106,13 +112,27 @@ const HighlightReview = () => {
   const fetchHighlights = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/videos/${videoId}/highlights`);
-      // Filter OUT highlights that are approved or rejected
-      const pendingHighlights = response.data.filter(h => 
-        h.review_status !== ReviewStatus.APPROVED && h.review_status !== ReviewStatus.REJECTED
-      );
-      setHighlights(pendingHighlights);
+      setAllHighlights(response.data);
     } catch (error) {
       console.error('Error fetching highlights:', error);
+    }
+  };
+
+  const getFilteredHighlights = () => {
+    switch (activeFilter) {
+      case 'approved':
+        return allHighlights.filter(h => h.review_status === ReviewStatus.APPROVED);
+      case 'pending':
+        return allHighlights.filter(h => 
+          h.review_status !== ReviewStatus.APPROVED && 
+          h.review_status !== ReviewStatus.REJECTED &&
+          h.review_status !== ReviewStatus.PUBLISHED
+        );
+      case 'published':
+        return allHighlights.filter(h => h.review_status === ReviewStatus.PUBLISHED);
+      case 'all':
+      default:
+        return allHighlights;
     }
   };
 
@@ -155,6 +175,70 @@ const HighlightReview = () => {
     }
   };
 
+  const handlePublish = async (highlightId, comment) => {
+    try {
+      await axios.put(`${API_BASE_URL}/highlights/${highlightId}`, { 
+        review_status: ReviewStatus.PUBLISHED,
+        review_comment: comment
+      });
+      // Update the allHighlights state
+      setAllHighlights(prevHighlights => 
+        prevHighlights.map(h => 
+          h.id === highlightId 
+            ? { ...h, review_status: ReviewStatus.PUBLISHED, review_comment: comment }
+            : h
+        )
+      );
+    } catch (error) {
+      console.error('Error publishing highlight:', error);
+    }
+  };
+
+  const FilterChips = ({ activeFilter, setActiveFilter, counts }) => (
+    <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+      <Chip
+        icon={<ViewListIcon />}
+        label={`All (${counts.all})`}
+        onClick={() => setActiveFilter('all')}
+        color="primary"
+        variant={activeFilter === 'all' ? 'filled' : 'outlined'}
+      />
+      <Chip
+        icon={<PendingIcon />}
+        label={`Pending (${counts.pending})`}
+        onClick={() => setActiveFilter('pending')}
+        variant={activeFilter === 'pending' ? 'filled' : 'outlined'}
+      />
+      <Chip
+        icon={<CheckCircleIcon />}
+        label={`Approved (${counts.approved})`}
+        onClick={() => setActiveFilter('approved')}
+        color="success"
+        variant={activeFilter === 'approved' ? 'filled' : 'outlined'}
+      />
+      <Chip
+        icon={<PublishIcon />}
+        label={`Published (${counts.published})`}
+        onClick={() => setActiveFilter('published')}
+        color="info"
+        variant={activeFilter === 'published' ? 'filled' : 'outlined'}
+      />
+    </Box>
+  );
+
+  // Calculate filtered highlights and counts before the return statement
+  const filteredHighlights = getFilteredHighlights();
+  const counts = {
+    all: allHighlights.length,
+    approved: allHighlights.filter(h => h.review_status === ReviewStatus.APPROVED).length,
+    pending: allHighlights.filter(h => 
+      h.review_status !== ReviewStatus.APPROVED && 
+      h.review_status !== ReviewStatus.REJECTED &&
+      h.review_status !== ReviewStatus.PUBLISHED
+    ).length,
+    published: allHighlights.filter(h => h.review_status === ReviewStatus.PUBLISHED).length
+  };
+
   if (!video) return <div>Loading...</div>;
 
   return (
@@ -188,19 +272,24 @@ const HighlightReview = () => {
           View Full Transcript
         </Button>
         
-        <Typography variant="body2">
-          {highlights.length} highlights remaining
-        </Typography>
+        <FilterChips 
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          counts={counts}
+        />
       </ControlsSection>
 
-      {highlights.length === 0 ? (
-        <Typography variant="h6">All highlights have been reviewed.</Typography>
+      {filteredHighlights.length === 0 ? (
+        <Typography variant="h6">
+          No {activeFilter} highlights found.
+        </Typography>
       ) : (
         <HighlightCard
-          highlight={highlights[0]}
+          highlight={filteredHighlights[0]}
           video={video}
           onApprove={handleApprove}
           onReject={handleReject}
+          onPublish={handlePublish}
         />
       )}
 
