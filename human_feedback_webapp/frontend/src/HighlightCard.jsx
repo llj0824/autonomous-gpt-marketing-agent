@@ -385,6 +385,53 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
     setShowRegenerateDialog(false);
   };
 
+  const renderContent = (content) => {
+    const blocks = content.split('\n\n').filter(block => block.trim());  // Split by double newline
+    
+    return blocks.map((block, idx) => {
+      const lines = block.trim().split('\n');
+      const firstLine = lines[0];
+      
+      // Check if block starts with an emoji
+      if (firstLine.match(/^[🔬✨💎🎯📝🔍]/)) {
+        const [title, ...content] = firstLine.split(':');
+        return (
+          <Box key={idx} sx={{ mb: 2 }}>
+            <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>
+              {title.trim()}
+            </Typography>
+            <Typography 
+              variant="body2"
+              sx={title.includes('✨') ? {  // Special styling for quotes
+                fontStyle: 'italic',
+                borderLeft: '3px solid',
+                borderColor: 'primary.main',
+                pl: 2,
+                py: 1,
+                bgcolor: 'action.hover'
+              } : undefined}
+            >
+              {content.join(':').trim()}  {/* Rejoin in case content had colons */}
+            </Typography>
+            {/* Render any additional lines in the block */}
+            {lines.slice(1).map((line, lineIdx) => (
+              <Typography key={lineIdx} variant="body2">
+                {line.trim()}
+              </Typography>
+            ))}
+          </Box>
+        );
+      }
+      
+      // Regular text block without emoji
+      return (
+        <Typography key={idx} variant="body1" sx={{ mb: 2 }}>
+          {block}
+        </Typography>
+      );
+    });
+  };
+
   return (
     <Card 
       sx={{ 
@@ -419,66 +466,7 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
 
         <Divider sx={{ my: 2 }} />
 
-        {highlight.content.split('\n').map((line, idx) => {
-          if (!line.trim()) return null;
-          if (line.includes('Topic:')) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🔬 Topic</Typography>
-                <Typography variant="body2">{line.replace('🔬 Topic:', '').trim()}</Typography>
-              </Box>
-            );
-          }
-          if (line.includes('Quote:')) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>✨ Quote</Typography>
-                <Typography 
-                  variant="body2"
-                  sx={{ 
-                    fontStyle: 'italic',
-                    borderLeft: '3px solid',
-                    borderColor: 'primary.main',
-                    pl: 2,
-                    py: 1,
-                    bgcolor: 'action.hover'
-                  }}
-                >
-                  {line.replace('✨ Quote:', '').trim()}
-                </Typography>
-              </Box>
-            );
-          }
-          if (line.includes('Insight:')) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>💎 Insight</Typography>
-                <Typography variant="body2">{line.replace('💎 Insight:', '').trim()}</Typography>
-              </Box>
-            );
-          }
-          if (line.includes('TAKEAWAY:')) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>🎯 TAKEAWAY</Typography>
-                <Typography variant="body2">{line.replace('🎯 TAKEAWAY:', '').trim()}</Typography>
-              </Box>
-            );
-          }
-          if (line.includes('CONTEXT:')) {
-            return (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 600 }}>📝 CONTEXT</Typography>
-                <Typography variant="body2">{line.replace('📝 CONTEXT:', '').trim()}</Typography>
-              </Box>
-            );
-          }
-          return (
-            <Typography key={idx} variant="body1" sx={{ mb: 2 }}>
-              {line}
-            </Typography>
-          );
-        })}
+        {renderContent(highlight.content)}
 
         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
           <Button
@@ -487,13 +475,6 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
             onClick={() => setShowTranscript(true)}
           >
             Show Transcript Context
-          </Button>
-          <Button
-            startIcon={<RefreshIcon />}
-            variant="outlined"
-            onClick={() => setShowRegenerateDialog(true)}
-          >
-            Regenerate
           </Button>
         </Box>
       </CardContent>
@@ -534,6 +515,14 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
             onClick={handleReject}
           >
             Reject
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<RefreshIcon />}
+            sx={{ bgcolor: 'grey.500', '&:hover': { bgcolor: 'grey.600' } }}
+            onClick={() => setShowRegenerateDialog(true)}
+          >
+            Regenerate
           </Button>
         </Box>
       </CardActions>

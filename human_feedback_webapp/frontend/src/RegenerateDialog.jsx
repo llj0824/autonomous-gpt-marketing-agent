@@ -73,6 +73,13 @@ const RegenerateDialog = ({ highlight, onClose, onRegenerate }) => {
                   {highlight.content}
                 </Box>
               </Paper>
+
+              <Typography variant="subtitle2">Prompt:</Typography>
+              <Paper sx={{ p: 2, bgcolor: 'grey.100', mb: 2 }}>
+                <Box sx={{ whiteSpace: 'pre-wrap' }}>
+                  {highlight.prompt}
+                </Box>
+              </Paper>
             </Box>
           </Grid>
 
