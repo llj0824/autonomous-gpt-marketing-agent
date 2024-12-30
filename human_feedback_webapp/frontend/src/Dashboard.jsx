@@ -36,7 +36,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import ViewListIcon from '@mui/icons-material/ViewList';           // Standard list view
 
-const API_BASE_URL = 'http://localhost:8000'; // Adjust port if your FastAPI backend uses a different one
+export const API_BASE_URL = 'http://localhost:8000'; // Adjust port if your FastAPI backend uses a different one
 
 // Add styled components
 const DashboardContainer = styled(Container)(({ theme }) => ({

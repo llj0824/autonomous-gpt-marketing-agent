@@ -29,9 +29,11 @@ import {
   Close as CloseIcon,
   Download as DownloadIcon,
   Check as CheckIcon,
-  Publish as PublishIcon
+  Publish as PublishIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import RegenerateDialog from './RegenerateDialog';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -110,6 +112,7 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
   const [downloadState, setDownloadState] = useState('idle');
   const [downloadError, setDownloadError] = useState(null);
   const [timeRange, setTimeRange] = useState([0, video?.duration || 3600]); // Duration in seconds
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
 
   useEffect(() => {
     setComment('');
@@ -376,6 +379,12 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
     setComment('');
   };
 
+  const handleRegenerate = async (newContent) => {
+    // Update the highlight content locally
+    highlight.content = newContent;
+    setShowRegenerateDialog(false);
+  };
+
   return (
     <Card 
       sx={{ 
@@ -479,6 +488,13 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
           >
             Show Transcript Context
           </Button>
+          <Button
+            startIcon={<RefreshIcon />}
+            variant="outlined"
+            onClick={() => setShowRegenerateDialog(true)}
+          >
+            Regenerate
+          </Button>
         </Box>
       </CardContent>
 
@@ -541,6 +557,14 @@ const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => 
           </Typography>
         </Box>
       </Dialog>
+
+      {showRegenerateDialog && (
+        <RegenerateDialog
+          highlight={highlight}
+          onClose={() => setShowRegenerateDialog(false)}
+          onRegenerate={handleRegenerate}
+        />
+      )}
     </Card>
   );
 };

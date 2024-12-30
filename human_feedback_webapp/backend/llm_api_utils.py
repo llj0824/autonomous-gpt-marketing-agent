@@ -231,3 +231,46 @@ Two sentence summary of highlight in viewpoint of the reader."""
                     })
         
         return individual_highlights
+
+    # TODO: REFACTOR generate_hightlights to reuse @regenerate_single_highlight...
+    async def regenerate_single_highlight(
+        self,
+        prompt: str,
+        system_role: Optional[str] = None,
+        model_name: str = GPT_4o,
+        max_tokens: int = 10000,
+        temperature: float = 0.4
+    ) -> dict:
+        """
+        Regenerate a single highlight using provided prompt and optional custom system role.
+        
+        Args:
+            prompt: The transcript segment to generate highlight from
+            system_role: Optional custom system role. If None, uses default highlights role
+            model_name: The model to use for generation
+            max_tokens: Maximum tokens for response
+            temperature: Temperature for generation
+            
+        Returns:
+            dict containing:
+            - content: The highlight text
+            - prompt: The transcript segment used
+            - system_role: The system role used
+        """
+        # Use provided system role or default to highlights system role
+        system_role = system_role or self.llm_highlights_system_role
+        
+        # Generate new highlight
+        response = await self.call_gpt4(
+            system_role=system_role,
+            prompt=prompt,
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        return {
+            'content': response.strip(),
+            'prompt': prompt,
+            'system_role': system_role
+        }

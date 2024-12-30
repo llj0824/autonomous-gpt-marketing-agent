@@ -11,7 +11,7 @@ The application uses SQLAlchemy for database operations and depends on
 various utility modules for YouTube data processing.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas, crud
@@ -408,6 +408,53 @@ def sanitize_filename(filename):
     filename = ''.join(char for char in filename if ord(char) < 128)
     return filename.strip()
 
+@app.post("/highlights/{highlight_id}/regenerate")
+async def regenerate_highlight(
+    highlight_id: str,
+    system_role: str = Body(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Regenerate a highlight using the same prompt but with potentially modified system role.
+    
+    Args:
+        highlight_id: ID of the highlight to regenerate
+        system_role: Modified system role for generation
+        
+    Returns:
+        The newly generated highlight content
+    """
+    try:
+        # Get existing highlight
+        highlight = crud.get_highlight(db, highlight_id=highlight_id)
+        if not highlight:
+            raise HTTPException(status_code=404, detail="Highlight not found")
+            
+        logger.info(f"Regenerating highlight {highlight_id}")
+        
+        # Generate new highlight using existing prompt but new system role
+        new_highlight = await llm_api_utils.regenerate_single_highlight(
+            prompt=highlight.prompt,
+            system_role=system_role
+        )
+        
+        return {
+            "id": highlight_id,
+            "content": new_highlight['content'],
+            "prompt": highlight.prompt,
+            "system_role": system_role
+        }
+        
+    except Exception as e:
+        logger.error(f"Error regenerating highlight {highlight_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
