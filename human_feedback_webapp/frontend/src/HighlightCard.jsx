@@ -28,7 +28,8 @@ import {
   ThumbDown as RejectIcon,
   Close as CloseIcon,
   Download as DownloadIcon,
-  Check as CheckIcon
+  Check as CheckIcon,
+  Publish as PublishIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -103,7 +104,7 @@ const HMSInput = ({ label, value, onChange }) => {
   );
 };
 
-const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
+const HighlightCard = ({ highlight, video, onApprove, onReject, onPublish }) => {
   const [showTranscript, setShowTranscript] = useState(false);
   const [comment, setComment] = useState('');
   const [downloadState, setDownloadState] = useState('idle');
@@ -370,6 +371,11 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
     );
   };
 
+  const handlePublish = () => {
+    onPublish(highlight.id, comment);
+    setComment('');
+  };
+
   return (
     <Card 
       sx={{ 
@@ -489,6 +495,14 @@ const HighlightCard = ({ highlight, video, onApprove, onReject }) => {
         />
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button
+            variant="contained"
+            startIcon={<PublishIcon />}
+            color="info"
+            onClick={handlePublish}
+          >
+            Publish
+          </Button>
           <Button
             variant="contained"
             startIcon={<ApproveIcon />}

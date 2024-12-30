@@ -9,4 +9,5 @@ class ProcessingStatus(str, Enum):
 class ReviewStatus(str, Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
-    REJECTED = "REJECTED" 
+    REJECTED = "REJECTED"
+    PUBLISHED = "PUBLISHED" 
