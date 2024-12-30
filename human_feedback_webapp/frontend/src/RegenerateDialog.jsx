@@ -62,12 +62,16 @@ const RegenerateDialog = ({ highlight, onClose, onRegenerate }) => {
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle2">System Role:</Typography>
               <Paper sx={{ p: 2, bgcolor: 'grey.100', mb: 2 }}>
-                {highlight.system_role}
+                <Box sx={{ whiteSpace: 'pre-wrap' }}>
+                  {highlight.system_role}
+                </Box>
               </Paper>
               
               <Typography variant="subtitle2">Content:</Typography>
               <Paper sx={{ p: 2, bgcolor: 'grey.100' }}>
-                {highlight.content}
+                <Box sx={{ whiteSpace: 'pre-wrap' }}>
+                  {highlight.content}
+                </Box>
               </Paper>
             </Box>
           </Grid>
@@ -90,7 +94,9 @@ const RegenerateDialog = ({ highlight, onClose, onRegenerate }) => {
                 <>
                   <Typography variant="subtitle2">Generated Content:</Typography>
                   <Paper sx={{ p: 2, bgcolor: 'grey.100' }}>
-                    {newContent}
+                    <Box sx={{ whiteSpace: 'pre-wrap' }}>
+                      {newContent}
+                    </Box>
                   </Paper>
                 </>
               )}
