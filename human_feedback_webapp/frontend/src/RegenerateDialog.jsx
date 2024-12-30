@@ -45,13 +45,34 @@ const RegenerateDialog = ({ highlight, onClose, onRegenerate }) => {
     onClose();
   };
 
+  const handleCopyHighlight = () => {
+    const highlightData = {
+      SystemRole: highlight.system_role,
+      Prompt: highlight.prompt,
+      Result: highlight.content
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(highlightData, null, 2))
+      .catch(err => console.error('Failed to copy:', err));
+  };
+
   return (
     <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
-        Regenerate Highlight
-        <IconButton onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            className="copy-btn"
+            onClick={handleCopyHighlight}
+          >
+            Copy Highlight
+          </button>
+          <Typography variant="h6" component="span">
+            Regenerate Highlight
+          </Typography>
+          <IconButton onClick={onClose} sx={{ ml: 1 }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
       
       <DialogContent>
