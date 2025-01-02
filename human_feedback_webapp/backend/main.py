@@ -315,11 +315,19 @@ async def download_video(video_id: str, db: Session = Depends(get_db)):
         # Download if file doesn't exist
         if not os.path.exists(filepath):
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
                 'cookiesfrombrowser': 'chrome',
                 'outtmpl': filepath,
                 'quiet': True,
-                'merge_output_format': 'mp4'
+                'merge_output_format': 'mp4',
+                # Additional options for smaller file size
+                'postprocessor_args': [
+                    '-c:v', 'libx264',  # Use H.264 codec
+                    '-crf', '28',       # Compression level (23-28 is good balance, higher = smaller file)
+                    '-preset', 'slower', # Slower encoding = better compression
+                    '-c:a', 'aac',      # Audio codec
+                    '-b:a', '128k'      # Audio bitrate
+                ]
             }
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
@@ -375,16 +383,22 @@ async def download_video_clip(
                 }]
 
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
                 'outtmpl': filepath,
                 'quiet': True,
                 'merge_output_format': 'mp4',
                 'download_ranges': download_range_callback,
-                'force_keyframes_at_cuts': True,  # Ensures clean cuts
-                # Add cookies from browser - using Chrome as an example
+                'force_keyframes_at_cuts': True,
                 'cookies_from_browser': ('chrome',),
-                # You can also add a user-agent to help avoid detection
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                # Additional options for smaller file size
+                'postprocessor_args': [
+                    '-c:v', 'libx264',
+                    '-crf', '28',
+                    '-preset', 'slower',
+                    '-c:a', 'aac',
+                    '-b:a', '128k'
+                ]
             }
             
             with YoutubeDL(ydl_opts) as ydl:
