@@ -45,23 +45,6 @@ const formatTime = (seconds) => {
 };
 
 const HMSInput = ({ label, value, onChange }) => {
-  const [h, setH] = useState('00');
-  const [m, setM] = useState('00');
-  const [s, setS] = useState('00');
-
-  useEffect(() => {
-    onChange(`${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`);
-  }, [h, m, s]);
-
-  useEffect(() => {
-    if (value && value.match(/^\d{2}:\d{2}:\d{2}$/)) {
-      const [hh, mm, ss] = value.split(':');
-      setH(hh);
-      setM(mm);
-      setS(ss);
-    }
-  }, [value]);
-
   return (
     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
       <Typography variant="caption" display="block">
@@ -69,38 +52,34 @@ const HMSInput = ({ label, value, onChange }) => {
       </Typography>
       <TextField
         size="small"
-        sx={{ width: 60 }}
-        value={h}
+        sx={{ width: 120 }}
+        value={value}
         onChange={(e) => {
-          const val = e.target.value.replace(/\D/g, '').slice(0, 2); 
-          setH(val);
+          let val = e.target.value;
+          
+          // Only allow numbers and colons
+          if (!/^[\d:]*$/.test(val)) return;
+          
+          // Remove any existing colons first
+          val = val.replace(/:/g, '');
+          
+          // Limit to 6 digits (HHMMSS)
+          val = val.slice(0, 6);
+          
+          // Format with colons
+          let formatted = val;
+          if (val.length >= 4) {
+            formatted = `${val.slice(0, 2)}:${val.slice(2, 4)}:${val.slice(4)}`;
+          } else if (val.length >= 2) {
+            formatted = `${val.slice(0, 2)}:${val.slice(2)}`;
+          }
+          
+          onChange(formatted);
         }}
-        placeholder="HH"
-        inputProps={{ maxLength: 2 }}
-      />
-      <Typography variant="body2">:</Typography>
-      <TextField
-        size="small"
-        sx={{ width: 60 }}
-        value={m}
-        onChange={(e) => {
-          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-          setM(val);
+        placeholder="HH:MM:SS"
+        inputProps={{ 
+          maxLength: 8
         }}
-        placeholder="MM"
-        inputProps={{ maxLength: 2 }}
-      />
-      <Typography variant="body2">:</Typography>
-      <TextField
-        size="small"
-        sx={{ width: 60 }}
-        value={s}
-        onChange={(e) => {
-          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-          setS(val);
-        }}
-        placeholder="SS"
-        inputProps={{ maxLength: 2 }}
       />
     </Box>
   );
