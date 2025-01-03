@@ -28,6 +28,7 @@ import os
 from fastapi.responses import FileResponse
 import re
 from datetime import datetime
+import zipfile
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -368,10 +369,11 @@ async def download_video_clip(
         
         # Create unique filename for the clip
         safe_title = sanitize_filename(video.title)
-        filename = f"{video_id}_clip_{start_time}-{end_time}_{safe_title}.mp4"
-        filepath = os.path.join(downloads_dir, filename)
+        base_filename = f"{video_id}_clip_{start_time}-{end_time}_{safe_title}"
+        video_filepath = os.path.join(downloads_dir, f"{base_filename}.mp4")
+        srt_filepath = os.path.join(downloads_dir, f"{base_filename}.srt")
         
-        if not os.path.exists(filepath):
+        if not os.path.exists(video_filepath):
             # Convert time strings to seconds for the download_ranges callback
             start_seconds = time_to_seconds(start_time)
             end_seconds = time_to_seconds(end_time)
@@ -384,7 +386,7 @@ async def download_video_clip(
 
             ydl_opts = {
                 'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
-                'outtmpl': filepath,
+                'outtmpl': video_filepath,
                 'quiet': True,
                 'merge_output_format': 'mp4',
                 'download_ranges': download_range_callback,
@@ -393,21 +395,87 @@ async def download_video_clip(
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 # Additional options for smaller file size
                 'postprocessor_args': [
-                    '-c:v', 'libx264',
-                    '-crf', '28',
-                    '-preset', 'slower',
-                    '-c:a', 'aac',
-                    '-b:a', '128k'
+                    '-c:v', 'libx264',     # Video codec - H.264 for wide compatibility
+                    '-crf', '28',          # Constant Rate Factor - Higher value (18-28) means smaller file but lower quality
+                    '-preset', 'slower',    # Encoding speed preset - Slower = better compression but longer encoding time
+                    '-c:a', 'aac',         # Audio codec - AAC for good quality and compatibility
+                    '-b:a', '128k'         # Audio bitrate - Lower = smaller file but reduced audio quality
                 ]
             }
             
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+            
+            # Also download subtitles
+            ydl_opts_subs = {
+                'writesubtitles': True,
+                'writeautomaticsub': True,
+                'subtitlesformat': 'srt',
+                'skip_download': True,
+                'outtmpl': srt_filepath,
+                'quiet': True,
+            }
+            
+            with YoutubeDL(ydl_opts_subs) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+            
+            # Find and process the subtitle file
+            temp_srt = os.path.join(downloads_dir, f'temp_{video_id}.en.srt')
+            if not os.path.exists(temp_srt):
+                temp_srt = os.path.join(downloads_dir, f'temp_{video_id}.srt')
+            
+            if os.path.exists(temp_srt):
+                # Process subtitles for the clip timerange
+                start_seconds = time_to_seconds(start_time)
+                end_seconds = time_to_seconds(end_time)
+                
+                with open(temp_srt, 'r', encoding='utf-8') as f:
+                    srt_content = f.read()
+                
+                # Parse and filter subtitles
+                trimmed_subs = []
+                current_block = []
+                counter = 1
+                
+                for line in srt_content.split('\n'):
+                    if line.strip():
+                        current_block.append(line)
+                    elif current_block:
+                        if len(current_block) >= 3:
+                            time_line = current_block[1]
+                            times = time_line.split(' --> ')
+                            sub_start = time_to_seconds(times[0].replace(',', '.').split('.')[0])
+                            
+                            if start_seconds <= sub_start <= end_seconds:
+                                adjusted_block = [
+                                    str(counter),
+                                    time_line,
+                                    *current_block[2:]
+                                ]
+                                trimmed_subs.extend(adjusted_block)
+                                trimmed_subs.append('')
+                                counter += 1
+                        current_block = []
+                
+                # Write trimmed subtitles
+                with open(srt_filepath, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(trimmed_subs))
+                
+                # Clean up temp files
+                if os.path.exists(temp_srt):
+                    os.remove(temp_srt)
+        
+        # Create a ZIP file containing both the video and subtitles
+        zip_filepath = os.path.join(downloads_dir, f"{base_filename}.zip")
+        with zipfile.ZipFile(zip_filepath, 'w') as zipf:
+            zipf.write(video_filepath, os.path.basename(video_filepath))
+            if os.path.exists(srt_filepath):
+                zipf.write(srt_filepath, os.path.basename(srt_filepath))
         
         return FileResponse(
-            filepath, 
-            media_type='video/mp4',
-            filename=filename
+            zip_filepath,
+            media_type='application/zip',
+            filename=f"{base_filename}.zip"
         )
         
     except Exception as e:
