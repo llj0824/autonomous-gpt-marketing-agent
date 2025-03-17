@@ -1,0 +1,41 @@
+{
+  "name": "autonomous-gpt-marketing-agent",
+  "version": "1.0.0",
+  "description": "Autonomous marketing agent for monitoring KOL tweets and generating tool-based responses",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "mock": "ts-node src/mock.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/llj0824/autonomous-gpt-marketing-agent.git"
+  },
+  "keywords": [
+    "marketing",
+    "agent",
+    "twitter",
+    "automation",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/llj0824/autonomous-gpt-marketing-agent/issues"
+  },
+  "homepage": "https://github.com/llj0824/autonomous-gpt-marketing-agent#readme",
+  "dependencies": {
+    "agent-twitter-client": "^0.0.18",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7",
+    "openai": "^4.87.3",
+    "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.24",
+    "ts-node": "^10.9.2"
+  }
+}
