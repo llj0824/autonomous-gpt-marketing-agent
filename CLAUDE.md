@@ -20,14 +20,48 @@ npm run build
 # Run the application with real Twitter integration
 npm start
 
-# Run with mock data (recommended for development)
+# Run with limited API usage (for testing)
 npm run mock
 
 # For development (runs with ts-node)
 npm run dev
 ```
 
-### Project Structure
+## Application Components
+
+### Tweet Collection (src/twitter/)
+- `client.ts`: Twitter client that authenticates and fetches tweets from KOLs
+- Handles tweet filtering by engagement metrics and date
+- Currently having intermittent authentication issues with Twitter API
+
+### Decision Engine (src/decision-engine/)
+- LLM-based analysis to determine tweet relevance
+- Evaluates which tool would be most appropriate for each tweet
+- Assigns relevance scores (0-100) to prioritize responses
+- Uses OpenAI API for content analysis
+
+### Tool Execution (src/tools/)
+- Framework for five different tool demonstrations:
+  1. Content Visualizer - Creates visualizations for content
+  2. Research Insight Generator - Links scientific claims to supporting research
+  3. Technical Concept Visualizer - Creates visualizations for complex concepts
+  4. Market Context Analyzer - Provides market data for crypto/AI mentions
+  5. Video Insight Extractor - Extracts key points from video content
+- All tool execution is handled through OpenAI API
+
+### Response Generation (src/response/)
+- Creates natural-sounding marketing responses
+- Incorporates tool outputs into contextual replies
+- Maintains helpful tone without being overtly promotional
+- Limits responses to Twitter's character constraints
+
+### CSV Output (src/output/)
+- Writes generated responses to CSV for review
+- Includes full context with original tweet and reasoning
+- Tracks status (pending/approved/rejected)
+- Supports human review workflow
+
+## Project Structure
 
 - `src/config/` - Configuration and settings
 - `src/twitter/` - Twitter client and tweet collection
@@ -36,7 +70,7 @@ npm run dev
 - `src/response/` - Response generation from tool outputs
 - `src/output/` - CSV output management
 
-### Workflow
+## Workflow
 
 1. The agent collects tweets from the configured list of KOLs
 2. Each tweet is analyzed by the decision engine to determine:
@@ -47,21 +81,26 @@ npm run dev
 4. A natural-sounding response is generated based on the tool output
 5. Results are written to a CSV file for human review
 
-### Key Configuration Files
+## Key Configuration Files
 
 - `kol-list.ts` - Configure which Twitter accounts to monitor
 - `tools.ts` - Define the tools available for demonstrations
 - `.env` - Twitter API keys and other sensitive configuration
 
-### Development with Mock Data
+## Known Issues
 
-For development without needing actual Twitter credentials:
-1. Make sure you still have an OpenAI API key in your `.env` file
-2. Run `npm run mock` to use the mock Twitter client
-3. Mock tweets are predefined in `src/twitter/mock-client.ts`
-4. The mock version will still generate real tool outputs using OpenAI
+- Twitter authentication is intermittent - sometimes fails on first attempt
+- Twitter username handling needs improvement
+- Need to fine-tune relevance thresholds for better tool matching
 
-### Adding New Tools
+## Next Steps
+
+1. Fix Twitter authentication issues
+2. Test with real KOL tweets to validate decision engine
+3. Fine-tune OpenAI prompts for better content analysis
+4. Consider adding a review interface for approving responses
+
+## Adding New Tools
 
 1. Add a new tool definition in `src/config/tools.ts`
 2. The tool execution logic in `src/tools/executor.ts` handles all tools automatically through OpenAI

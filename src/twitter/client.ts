@@ -57,6 +57,8 @@ export class TwitterClient {
       console.log(`Collecting tweets for KOL: ${kol.username}`);
       
       try {
+        console.log(`Fetching tweets for @${kol.username}...`);
+        
         // Get tweets generator from this KOL
         const tweetsGenerator = this.scraper.getTweets(kol.username, options.maxTweetsPerKOL);
         
@@ -64,13 +66,16 @@ export class TwitterClient {
         const tweets: Tweet[] = [];
         for await (const tweet of tweetsGenerator) {
           tweets.push(tweet);
+          console.log(`Found tweet: ${tweet.text?.substring(0, 50)}...`);
           if (tweets.length >= options.maxTweetsPerKOL) {
             break;
           }
         }
         
+        console.log(`Retrieved ${tweets.length} tweets for @${kol.username}`);
+        
         // Process and filter tweets
-        const processedTweets = await this.processTweets(tweets, options);
+        const processedTweets = await this.processTweets(tweets, options, kol.username);
         
         allProcessedTweets.push(...processedTweets);
       } catch (error) {
@@ -86,7 +91,8 @@ export class TwitterClient {
    */
   private async processTweets(
     tweets: Tweet[], 
-    options: TweetCollectionOptions
+    options: TweetCollectionOptions,
+    kolUsername: string
   ): Promise<ProcessedTweet[]> {
     const processedTweets: ProcessedTweet[] = [];
     const currentDate = new Date();
@@ -125,13 +131,13 @@ export class TwitterClient {
           url: photo.url
         })) || [];
 
-        // Create standardized tweet object
+        // Create standardized tweet object - use the KOL username since Twitter API may not return correct username
         const processedTweet: ProcessedTweet = {
           id: tweet.id || '',
-          url: tweet.permanentUrl || `https://twitter.com/i/status/${tweet.id || ''}`,
+          url: tweet.permanentUrl || `https://twitter.com/${kolUsername}/status/${tweet.id || ''}`,
           author: {
-            username: tweet.userId || '',
-            displayName: tweet.name || tweet.userId || ''
+            username: kolUsername,
+            displayName: tweet.name || kolUsername
           },
           content: tweetText,
           createdAt: tweetDate,

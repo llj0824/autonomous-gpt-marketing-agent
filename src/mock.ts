@@ -28,11 +28,11 @@ class LimitedMarketingAgent {
       accessTokenSecret: config.twitter.accessTokenSecret
     });
 
-    // Initialize decision engine
+    // Initialize decision engine with very low threshold for testing
     this.decisionEngine = new DecisionEngine({
       openaiApiKey: config.openai.apiKey,
       model: config.openai.model,
-      relevanceThreshold: 50 // Default relevance threshold (0-100)
+      relevanceThreshold: 10 // Very low relevance threshold for testing (0-100)
     });
 
     // Initialize tool executor
@@ -79,6 +79,12 @@ class LimitedMarketingAgent {
       const tweets = await this.twitterClient.collectTweetsFromKOLs(KOLList, tweetOptions);
       console.log(`Collected ${tweets.length} tweets from KOLs`);
 
+      // Log the collected tweets for inspection
+      console.log("Collected tweets:");
+      tweets.forEach((tweet, index) => {
+        console.log(`${index + 1}. @${tweet.author.username}: ${tweet.content.substring(0, 100)}${tweet.content.length > 100 ? '...' : ''}`);
+      });
+      
       // Only analyze first 3 tweets to save API usage
       const limitedTweets = tweets.slice(0, 3);
       console.log(`Limited to analyzing ${limitedTweets.length} tweets`);

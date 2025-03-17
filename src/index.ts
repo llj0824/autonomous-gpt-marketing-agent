@@ -90,6 +90,12 @@ class MarketingAgent {
 
       // Analyze tweets and make decisions
       console.log('Analyzing tweets and making decisions...');
+      // Log the tweets for inspection
+      console.log("Collected tweets for analysis:");
+      tweets.forEach((tweet, index) => {
+        console.log(`${index + 1}. @${tweet.author.username}: ${tweet.content.substring(0, 100)}${tweet.content.length > 100 ? '...' : ''}`);
+      });
+      
       const decisions = await this.decisionEngine.analyzeTweets(tweets);
       const relevantDecisions = this.decisionEngine.filterAndRankDecisions(decisions);
       console.log(`Found ${relevantDecisions.length} relevant tweets for tool applications`);
