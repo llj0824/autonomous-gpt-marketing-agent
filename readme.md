@@ -59,6 +59,29 @@ The core concept is "show, don't tell" marketing - instead of claiming what our 
 └───────────┘      └────────────────┘      └────────────────┘
 ```
 
+Frontend UI/UX
+```
+
+## Option 1: Pipeline Status Board
+```
+┌─────────────────────────────────────────────────────────────┐
+│ AUTONOMOUS MARKETING AGENT - PIPELINE MONITOR               │
+├────────────┬────────────────┬────────────────┬──────────────┤
+│ TWEET      │ DECISION       │ TOOL           │ RESPONSE     │
+│ COLLECTION │ ENGINE         │ APPLICATION    │ GENERATION   │
+├────────────┼────────────────┼────────────────┼──────────────┤
+│            │                │                │              │
+│ 24 tweets  │ 16 matched     │ 12 processed   │ 10 generated │
+│ 3 pending  │ 8 rejected     │ 4 in progress  │ 2 pending    │
+│            │                │                │              │
+│ [Details]  │ [Details]      │ [Details]      │ [Details]    │
+└────────────┴────────────────┴────────────────┴──────────────┘
+│ ERROR LOG: Tool application failed for @techleader tweet    │
+│ [View Errors] [3 issues in the last hour]                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+
 ## 5. Implementation Details
 
 ### 5.1 KOL List Management
@@ -147,7 +170,7 @@ I recommend the following checkpoints for incremental development:
 - Set up basic filtering by engagement metrics
 - **Deliverable**: Working tweet collector outputting to console/file
 
-### Checkpoint 2: Decision Engine Prototype
+### [in-progress] Checkpoint 2: Decision Engine Prototype
 - Implement basic LLM-based routing logic
 - Create criteria for tweet suitability assessment
 - Develop simple tool-matching algorithm
