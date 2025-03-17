@@ -10,8 +10,21 @@
     .dashboard-card { margin-bottom: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .dashboard-card .card-header { background-color: #343a40; color: white; border-radius: 10px 10px 0 0; }
     .pipeline-status { display: flex; justify-content: space-between; padding: 15px; }
-    .status-item { text-align: center; padding: 10px; border-radius: 5px; background-color: #f8f9fa; }
-    .status-number { font-size: 24px; font-weight: bold; }
+    .status-item { 
+      text-align: center; 
+      padding: 10px; 
+      border-radius: 5px; 
+      background-color: #f8f9fa; 
+      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .status-item:hover { 
+      background-color: #e9ecef; 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .status-number { font-size: 24px; font-weight: bold; color: #495057; }
     .status-label { font-size: 14px; color: #6c757d; }
     .badge-success { background-color: #28a745; }
     .badge-warning { background-color: #ffc107; }

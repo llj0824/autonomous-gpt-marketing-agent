@@ -4,6 +4,27 @@ import fs from 'fs';
 import { agentStatus } from '../index';
 import { getResponseData } from '../output';
 
+// Stage data cache
+const stageData = {
+  tweets: [] as any[],
+  decisions: [] as any[],
+  toolOutputs: [] as any[],
+  responses: [] as any[]
+};
+
+// Function to update stage data
+export function updateStageData(
+  tweets: any[] = [], 
+  decisions: any[] = [], 
+  toolOutputs: any[] = [], 
+  responses: any[] = []
+) {
+  stageData.tweets = tweets;
+  stageData.decisions = decisions;
+  stageData.toolOutputs = toolOutputs;
+  stageData.responses = responses;
+}
+
 export function startServer(port: number) {
   const app = express();
   
@@ -23,6 +44,23 @@ export function startServer(port: number) {
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch responses' });
     }
+  });
+  
+  // API endpoints for each stage data
+  app.get('/api/stage/tweets', (req, res) => {
+    res.json(stageData.tweets);
+  });
+  
+  app.get('/api/stage/decisions', (req, res) => {
+    res.json(stageData.decisions);
+  });
+  
+  app.get('/api/stage/tools', (req, res) => {
+    res.json(stageData.toolOutputs);
+  });
+  
+  app.get('/api/stage/generated-responses', (req, res) => {
+    res.json(stageData.responses);
   });
   
   // Serve the main HTML file for all other routes

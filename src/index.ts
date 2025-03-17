@@ -4,7 +4,7 @@ import { DecisionEngine } from './decision-engine';
 import { OpenAIToolExecutor } from './tools';
 import { ResponseGenerator } from './response';
 import { CSVOutputWriter } from './output';
-import { startServer } from './ui/server';
+import { startServer, updateStageData } from './ui/server';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -122,9 +122,11 @@ class MarketingAgent {
       const tweets = await this.twitterClient.collectTweetsFromKOLs(KOLList, tweetOptions);
       console.log(`Collected ${tweets.length} tweets from KOLs`);
       
-      // Update status
+      // Update status and stage data
       agentStatus.tweets.total = tweets.length;
       agentStatus.tweets.pending = tweets.length;
+      // Store tweets for preview
+      updateStageData(tweets);
 
       if (tweets.length === 0) {
         console.log('No tweets collected, exiting');
@@ -143,7 +145,7 @@ class MarketingAgent {
       const relevantDecisions = this.decisionEngine.filterAndRankDecisions(decisions);
       console.log(`Found ${relevantDecisions.length} relevant tweets for tool applications`);
       
-      // Update status
+      // Update status and stage data
       agentStatus.tweets.processed = tweets.length;
       agentStatus.tweets.pending = 0;
       agentStatus.decisions.total = decisions.length;
@@ -151,6 +153,8 @@ class MarketingAgent {
       agentStatus.decisions.rejected = decisions.length - relevantDecisions.length;
       agentStatus.tools.total = relevantDecisions.length;
       agentStatus.tools.inProgress = relevantDecisions.length;
+      // Store decisions for preview
+      updateStageData(tweets, decisions);
 
       if (relevantDecisions.length === 0) {
         console.log('No relevant tweets found, exiting');
@@ -173,6 +177,8 @@ class MarketingAgent {
             // Update status for each processed tool
             agentStatus.tools.processed = toolOutputs.length;
             agentStatus.tools.inProgress = relevantDecisions.length - toolOutputs.length;
+            // Update stage data for each new tool output
+            updateStageData(tweets, decisions, toolOutputs);
           } catch (error) {
             console.error(`Error executing tool ${decision.selectedTool.name}:`, error);
             agentStatus.errors.push({
@@ -191,9 +197,11 @@ class MarketingAgent {
       
       const responses = await this.responseGenerator.generateResponses(toolOutputs);
       
-      // Update status
+      // Update status and stage data
       agentStatus.responses.generated = responses.length;
       agentStatus.responses.pending = 0;
+      // Store responses for preview
+      updateStageData(tweets, decisions, toolOutputs, responses);
       
       // Write to CSV
       console.log('Writing responses to CSV...');
