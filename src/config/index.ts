@@ -27,9 +27,9 @@ export const config = {
   
   // Tweet collection config
   tweetCollection: {
-    lookbackDays: 5, // How many days back to look for tweets
-    minEngagement: 10, // Minimum likes/retweets to consider a tweet
-    maxTweetsPerKOL: 10, // Maximum tweets to process per KOL
+    lookbackDays: 1, // How many days back to look for tweets
+    minEngagement: 1000, // Minimum likes/retweets to consider a tweet
+    maxTweetsPerKOL: 5, // Maximum tweets to process per KOL
   },
   
   // CSV output config
