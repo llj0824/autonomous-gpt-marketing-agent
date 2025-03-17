@@ -1,5 +1,5 @@
 import { config, validateConfig, KOLList, tools } from './config';
-import { TwitterClient, TweetCollectionOptions } from './twitter';
+import { MockTwitterClient, TweetCollectionOptions } from './twitter';
 import { DecisionEngine } from './decision-engine';
 import { OpenAIToolExecutor } from './tools';
 import { ResponseGenerator } from './response';
@@ -9,15 +9,15 @@ import { CSVOutputWriter } from './output';
  * Development version of the Marketing Agent
  */
 class LimitedMarketingAgent {
-  private twitterClient: TwitterClient;
+  private twitterClient: MockTwitterClient;
   private decisionEngine: DecisionEngine;
   private toolExecutor: OpenAIToolExecutor;
   private responseGenerator: ResponseGenerator;
   private csvWriter: CSVOutputWriter;
 
   constructor() {
-    // Initialize Twitter client
-    this.twitterClient = new TwitterClient({
+    // Initialize Mock Twitter client
+    this.twitterClient = new MockTwitterClient({
       username: config.twitter.username,
       password: config.twitter.password,
       email: config.twitter.email,

@@ -1,17 +1,25 @@
 import { TwitterClientConfig, ProcessedTweet, TweetCollectionOptions } from './types';
 import { KOL } from '../config/kol-list';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Mock Twitter client for development without actual Twitter API
+ * Uses stored real Twitter data when available, falls back to mock data
  */
 export class MockTwitterClient {
   private config: TwitterClientConfig;
   private isAuthenticated: boolean = false;
   private mockTweets: Map<string, ProcessedTweet[]> = new Map();
+  private storageDir: string;
 
   constructor(config: TwitterClientConfig) {
     this.config = config;
+    this.storageDir = path.join(__dirname, 'storage');
     this.initializeMockData();
+    
+    // Log if we have any stored real tweets
+    this.logAvailableStoredData();
   }
 
   /**
@@ -136,7 +144,7 @@ export class MockTwitterClient {
           username: 'levelsio',
           displayName: 'Pieter Levels'
         },
-        content: 'Remote work is becoming the default for tech companies. I've collected data on 3,000+ companies hiring remote workers in the last year and the trend is accelerating.',
+        content: "Remote work is becoming the default for tech companies. I've collected data on 3,000+ companies hiring remote workers in the last year and the trend is accelerating.",
         createdAt: new Date(),
         metrics: {
           likes: 1543,
@@ -161,6 +169,81 @@ export class MockTwitterClient {
   }
 
   /**
+   * Log available stored real data
+   */
+  private logAvailableStoredData(): void {
+    try {
+      if (!fs.existsSync(this.storageDir)) {
+        console.log('No stored Twitter data available yet. Will use mock data.');
+        return;
+      }
+      
+      const files = fs.readdirSync(this.storageDir);
+      if (files.length === 0) {
+        console.log('No stored Twitter data available yet. Will use mock data.');
+        return;
+      }
+      
+      // Group files by username
+      const userFiles: Record<string, string[]> = {};
+      
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const username = file.split('_')[0];
+          if (!userFiles[username]) {
+            userFiles[username] = [];
+          }
+          userFiles[username].push(file);
+        }
+      }
+      
+      console.log('Available stored Twitter data:');
+      for (const [username, files] of Object.entries(userFiles)) {
+        console.log(`- ${username}: ${files.length} file(s)`);
+      }
+    } catch (error) {
+      console.error('Error checking stored data:', error);
+    }
+  }
+  
+  /**
+   * Get stored tweets for a specific KOL
+   */
+  private getStoredTweets(username: string): ProcessedTweet[] {
+    try {
+      if (!fs.existsSync(this.storageDir)) {
+        return [];
+      }
+      
+      const files = fs.readdirSync(this.storageDir);
+      const userFiles = files.filter(file => 
+        file.startsWith(`${username.toLowerCase()}_`) && file.endsWith('.json')
+      );
+      
+      if (userFiles.length === 0) {
+        return [];
+      }
+      
+      // Sort files by date (newest first) and take the most recent file
+      userFiles.sort().reverse();
+      const mostRecentFile = userFiles[0];
+      const filePath = path.join(this.storageDir, mostRecentFile);
+      
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const storedTweets = JSON.parse(fileContent) as any[];
+      
+      // Convert dates back to Date objects
+      return storedTweets.map(tweet => ({
+        ...tweet,
+        createdAt: new Date(tweet.createdAt)
+      }));
+    } catch (error) {
+      console.error(`Error getting stored tweets for ${username}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Collects tweets from a list of KOLs
    */
   async collectTweetsFromKOLs(
@@ -174,10 +257,18 @@ export class MockTwitterClient {
     const allTweets: ProcessedTweet[] = [];
     
     for (const kol of kols) {
-      console.log(`Collecting mock tweets for KOL: ${kol.username}`);
+      // First try to get real stored tweets
+      const storedTweets = this.getStoredTweets(kol.username);
       
-      const kolTweets = this.mockTweets.get(kol.username.toLowerCase()) || [];
-      allTweets.push(...kolTweets);
+      if (storedTweets.length > 0) {
+        console.log(`Using ${storedTweets.length} real stored tweets for @${kol.username}`);
+        allTweets.push(...storedTweets);
+      } else {
+        // Fall back to mock tweets if no stored data
+        console.log(`No stored tweets found for @${kol.username}, using mock data`);
+        const mockTweets = this.mockTweets.get(kol.username.toLowerCase()) || [];
+        allTweets.push(...mockTweets);
+      }
     }
 
     return allTweets;
@@ -187,12 +278,60 @@ export class MockTwitterClient {
    * Get a specific tweet by ID
    */
   async getTweetById(tweetId: string): Promise<ProcessedTweet | null> {
+    // First, try to find the tweet in stored real data
+    try {
+      if (fs.existsSync(this.storageDir)) {
+        const files = fs.readdirSync(this.storageDir);
+        
+        // Check specific tweet files first
+        const tweetFiles = files.filter(file => file.startsWith(`tweet_${tweetId}_`));
+        
+        if (tweetFiles.length > 0) {
+          const filePath = path.join(this.storageDir, tweetFiles[0]);
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const storedTweets = JSON.parse(fileContent) as any[];
+          
+          if (storedTweets.length > 0) {
+            return {
+              ...storedTweets[0],
+              createdAt: new Date(storedTweets[0].createdAt)
+            };
+          }
+        }
+        
+        // If not found in specific files, check all KOL files
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            try {
+              const filePath = path.join(this.storageDir, file);
+              const fileContent = fs.readFileSync(filePath, 'utf-8');
+              const storedTweets = JSON.parse(fileContent) as any[];
+              
+              const matchingTweet = storedTweets.find(tweet => tweet.id === tweetId);
+              if (matchingTweet) {
+                return {
+                  ...matchingTweet,
+                  createdAt: new Date(matchingTweet.createdAt)
+                };
+              }
+            } catch (err) {
+              // Continue to next file
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error searching for stored tweet ${tweetId}:`, error);
+    }
+    
+    // If not found in stored data, fall back to mock data
     for (const tweets of this.mockTweets.values()) {
       const tweet = tweets.find(t => t.id === tweetId);
       if (tweet) {
         return tweet;
       }
     }
+    
     return null;
   }
 }
