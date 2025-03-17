@@ -44,19 +44,19 @@ The core concept is "show, don't tell" marketing - instead of claiming what our 
 - Handle various content types (text, videos, links, etc.)
 - Store response data in structured CSV format
 
-## 4. System Architecture
-
+## 4. System Architecture - Chain-of-Thought Agent Architecture
 ```
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│  KOL Account  │     │  Tweet Data   │     │  LLM Router   │
-│   Monitoring  │────▶│  Collection   │────▶│  & Decision   │
-└───────────────┘     └───────────────┘     └───────┬───────┘
-                                                    │
-                                                    ▼
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│    Output     │     │  Response     │     │  Tool         │
-│     to CSV    │◀────│  Generation   │◀────│  Application   │
-└───────────────┘     └───────────────┘     └───────────────┘
+┌───────────┐      ┌────────────────┐      ┌────────────────┐
+│  Twitter  │      │  Tweet Context │      │  LLM Reasoner  │
+│  Stream   │─────▶│  Preparation   │─────▶│  with CoT      │
+└───────────┘      └────────────────┘      └───────┬────────┘
+                                                   │
+                                                   ▼
+┌───────────┐      ┌────────────────┐      ┌────────────────┐
+│ CSV with  │      │ Response       │      │ Tool Execution │
+│ Decision  │◀─────│ Generation     │◀─────│ with Reasoning │
+│ Trace     │      │                │      │ Artifacts      │
+└───────────┘      └────────────────┘      └────────────────┘
 ```
 
 ## 5. Implementation Details
