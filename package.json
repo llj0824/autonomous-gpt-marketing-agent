@@ -2,13 +2,12 @@
   "name": "autonomous-gpt-marketing-agent",
   "version": "1.0.0",
   "description": "Autonomous marketing agent for monitoring KOL tweets and generating tool-based responses",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "mock": "ts-node src/mock.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "mock": "ts-node src/mock.ts"
   },
   "repository": {
     "type": "git",
@@ -31,11 +30,22 @@
     "agent-twitter-client": "^0.0.18",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.7",
+    "next": "^14.1.4",
     "openai": "^4.87.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "server-only": "^0.0.1",
     "typescript": "^5.8.2"
   },
   "devDependencies": {
     "@types/node": "^20.17.24",
+    "@types/react": "^18.2.69",
+    "@types/react-dom": "^18.2.22",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.1.4",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.14",
     "ts-node": "^10.9.2"
   }
 }
