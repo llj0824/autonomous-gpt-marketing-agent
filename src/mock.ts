@@ -4,7 +4,7 @@ import { DecisionEngine } from './decision-engine';
 import { OpenAIToolExecutor } from './tools';
 import { ResponseGenerator } from './response';
 import { CSVOutputWriter } from './output';
-import { startServer } from './ui/server';
+import { startServer, updateStageData } from './ui/server';
 import { agentStatus } from './index';
 import dotenv from 'dotenv';
 
@@ -106,6 +106,9 @@ class LimitedMarketingAgent {
       // Update status for UI
       agentStatus.tweets.total = tweets.length;
       agentStatus.tweets.pending = tweets.length;
+      
+      // Update stage data for UI preview
+      updateStageData(tweets);
 
       // Log the collected tweets for inspection
       console.log("Collected tweets:");
@@ -135,6 +138,9 @@ class LimitedMarketingAgent {
       agentStatus.decisions.rejected = decisions.length - relevantDecisions.length;
       agentStatus.tools.total = relevantDecisions.length;
       agentStatus.tools.inProgress = relevantDecisions.length;
+      
+      // Update stage data for UI preview
+      updateStageData(tweets, decisions);
 
       // Execute tools on relevant tweets (max 2 for test)
       console.log('Executing tools on relevant tweets...');
@@ -156,6 +162,9 @@ class LimitedMarketingAgent {
             // Update status for each processed tool
             agentStatus.tools.processed = toolOutputs.length;
             agentStatus.tools.inProgress = Math.min(relevantDecisions.length, 2) - toolOutputs.length;
+            
+            // Update stage data for UI preview with each new tool output
+            updateStageData(tweets, decisions, toolOutputs);
           } catch (error) {
             console.error(`Error executing tool ${decision.selectedTool.name}:`, error);
             agentStatus.errors.push({
@@ -180,6 +189,9 @@ class LimitedMarketingAgent {
       // Update status
       agentStatus.responses.generated = responses.length;
       agentStatus.responses.pending = 0;
+      
+      // Update stage data for UI preview with complete data
+      updateStageData(tweets, decisions, toolOutputs, responses);
       
       // Write to CSV
       console.log('Writing responses to CSV...');
