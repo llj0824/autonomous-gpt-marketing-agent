@@ -1,26 +1,31 @@
 import { config, validateConfig, KOLList, tools } from './config';
-import { MockTwitterClient, TweetCollectionOptions } from './twitter';
+import { TwitterClient, TweetCollectionOptions } from './twitter';
 import { DecisionEngine } from './decision-engine';
 import { OpenAIToolExecutor } from './tools';
 import { ResponseGenerator } from './response';
 import { CSVOutputWriter } from './output';
 
 /**
- * Development version of the Marketing Agent using mock data
+ * Development version of the Marketing Agent
  */
-class MockMarketingAgent {
-  private twitterClient: MockTwitterClient;
+class LimitedMarketingAgent {
+  private twitterClient: TwitterClient;
   private decisionEngine: DecisionEngine;
   private toolExecutor: OpenAIToolExecutor;
   private responseGenerator: ResponseGenerator;
   private csvWriter: CSVOutputWriter;
 
   constructor() {
-    // Initialize Twitter client with mock data
-    this.twitterClient = new MockTwitterClient({
+    // Initialize Twitter client
+    this.twitterClient = new TwitterClient({
       username: config.twitter.username,
       password: config.twitter.password,
-      email: config.twitter.email
+      email: config.twitter.email,
+      proxyUrl: config.twitter.proxyUrl,
+      apiKey: config.twitter.apiKey,
+      apiSecretKey: config.twitter.apiSecretKey,
+      accessToken: config.twitter.accessToken,
+      accessTokenSecret: config.twitter.accessTokenSecret
     });
 
     // Initialize decision engine
@@ -47,11 +52,11 @@ class MockMarketingAgent {
   }
 
   /**
-   * Run the mock marketing agent pipeline
+   * Run the marketing agent pipeline with limited processing
    */
   async run() {
     try {
-      console.log('Starting mock marketing agent for development...');
+      console.log('Starting limited marketing agent...');
 
       // Validate OpenAI API key
       if (!config.openai.apiKey) {
@@ -59,31 +64,35 @@ class MockMarketingAgent {
         return;
       }
 
-      // Initialize Twitter mock client
-      console.log('Initializing mock Twitter client...');
+      // Initialize Twitter client
+      console.log('Initializing Twitter client...');
       await this.twitterClient.initialize();
 
-      // Collect mock tweets from KOLs
-      console.log('Collecting mock tweets from KOLs...');
+      // Collect tweets from KOLs
+      console.log('Collecting tweets from KOLs...');
       const tweetOptions: TweetCollectionOptions = {
         lookbackDays: config.tweetCollection.lookbackDays,
         minEngagement: config.tweetCollection.minEngagement,
-        maxTweetsPerKOL: config.tweetCollection.maxTweetsPerKOL
+        maxTweetsPerKOL: 2 // Limit tweets to process
       };
       
       const tweets = await this.twitterClient.collectTweetsFromKOLs(KOLList, tweetOptions);
-      console.log(`Collected ${tweets.length} mock tweets from KOLs`);
+      console.log(`Collected ${tweets.length} tweets from KOLs`);
+
+      // Only analyze first 3 tweets to save API usage
+      const limitedTweets = tweets.slice(0, 3);
+      console.log(`Limited to analyzing ${limitedTweets.length} tweets`);
 
       // Analyze tweets and make decisions
       console.log('Analyzing tweets and making decisions...');
-      const decisions = await this.decisionEngine.analyzeTweets(tweets);
+      const decisions = await this.decisionEngine.analyzeTweets(limitedTweets);
       const relevantDecisions = this.decisionEngine.filterAndRankDecisions(decisions);
       console.log(`Found ${relevantDecisions.length} relevant tweets for tool applications`);
 
-      // Execute tools on relevant tweets
+      // Execute tools on relevant tweets (max 1 for test)
       console.log('Executing tools on relevant tweets...');
       const toolOutputs = [];
-      for (const decision of relevantDecisions) {
+      for (const decision of relevantDecisions.slice(0, 1)) {
         if (decision.selectedTool) {
           console.log(`Applying ${decision.selectedTool.name} to tweet from @${decision.tweet.author.username}`);
           const toolOutput = await this.toolExecutor.execute(decision.tweet, decision.selectedTool);
@@ -104,19 +113,27 @@ class MockMarketingAgent {
       await this.csvWriter.writeResponses(responses);
       
       console.log(`Successfully processed ${responses.length} responses and wrote to ${config.output.csvPath}`);
+      
+      // Log a sample response for review
+      if (responses.length > 0) {
+        console.log('\nSample Response:');
+        console.log('Original Tweet:', responses[0].tweet.content);
+        console.log('Tool Used:', responses[0].tool.name);
+        console.log('Response:', responses[0].responseText);
+      }
     } catch (error) {
-      console.error('Error running mock marketing agent:', error);
+      console.error('Error running marketing agent:', error);
     }
   }
 }
 
-// Run the mock agent when this file is executed directly
+// Run the agent when this file is executed directly
 if (require.main === module) {
-  const agent = new MockMarketingAgent();
+  const agent = new LimitedMarketingAgent();
   agent.run().catch(error => {
-    console.error('Uncaught error running mock marketing agent:', error);
+    console.error('Uncaught error running limited marketing agent:', error);
     process.exit(1);
   });
 }
 
-export { MockMarketingAgent };
+export { LimitedMarketingAgent };

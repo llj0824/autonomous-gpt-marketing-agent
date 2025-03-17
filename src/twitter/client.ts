@@ -17,18 +17,22 @@ export class TwitterClient {
    */
   async initialize(): Promise<boolean> {
     try {
+      console.log('Attempting to login with:', { 
+        username: this.config.username,
+        email: this.config.email,
+        hasPassword: !!this.config.password,
+        hasApiKey: !!this.config.apiKey
+      });
+      
       // Authenticate with Twitter
       await this.scraper.login(
         this.config.username,
         this.config.password,
-        this.config.email,
-        this.config.apiKey,
-        this.config.apiSecretKey,
-        this.config.accessToken,
-        this.config.accessTokenSecret
+        this.config.email
       );
 
       this.isAuthenticated = await this.scraper.isLoggedIn();
+      console.log('Login successful:', this.isAuthenticated);
       return this.isAuthenticated;
     } catch (error) {
       console.error('Error initializing Twitter client:', error);
@@ -53,8 +57,17 @@ export class TwitterClient {
       console.log(`Collecting tweets for KOL: ${kol.username}`);
       
       try {
-        // Get tweets from this KOL
-        const tweets = await this.scraper.getTweets(kol.username, options.maxTweetsPerKOL);
+        // Get tweets generator from this KOL
+        const tweetsGenerator = this.scraper.getTweets(kol.username, options.maxTweetsPerKOL);
+        
+        // Convert AsyncGenerator to array of tweets
+        const tweets: Tweet[] = [];
+        for await (const tweet of tweetsGenerator) {
+          tweets.push(tweet);
+          if (tweets.length >= options.maxTweetsPerKOL) {
+            break;
+          }
+        }
         
         // Process and filter tweets
         const processedTweets = await this.processTweets(tweets, options);
@@ -87,49 +100,49 @@ export class TwitterClient {
           continue;
         }
 
-        // Check if tweet is within the lookback period
-        const tweetDate = new Date(tweet.date);
+        // Check if tweet is within the lookback period (using timestamp or timeParsed)
+        const tweetDate = tweet.timeParsed || (tweet.timestamp ? new Date(tweet.timestamp) : new Date());
         if (tweetDate < lookbackDate) {
           continue;
         }
 
         // Check if tweet meets minimum engagement
-        const totalEngagement = tweet.likes + tweet.retweets;
+        const likes = tweet.likes || 0;
+        const retweets = tweet.retweets || 0;
+        const totalEngagement = likes + retweets;
         if (totalEngagement < options.minEngagement) {
           continue;
         }
 
         // Extract URLs from tweet content
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const extractedUrls = tweet.text.match(urlRegex) || [];
+        const tweetText = tweet.text || '';
+        const extractedUrls = tweetText.match(urlRegex) || [];
 
         // Process media items
-        const media = tweet.media?.map(item => {
-          const mediaType = this.getMediaType(item.type);
-          return {
-            type: mediaType,
-            url: item.url
-          };
-        });
+        const media = tweet.photos?.map(photo => ({
+          type: 'image' as const,
+          url: photo.url
+        })) || [];
 
         // Create standardized tweet object
         const processedTweet: ProcessedTweet = {
-          id: tweet.id,
-          url: `https://twitter.com/${tweet.username}/status/${tweet.id}`,
+          id: tweet.id || '',
+          url: tweet.permanentUrl || `https://twitter.com/i/status/${tweet.id || ''}`,
           author: {
-            username: tweet.username,
-            displayName: tweet.name || tweet.username
+            username: tweet.userId || '',
+            displayName: tweet.name || tweet.userId || ''
           },
-          content: tweet.text,
+          content: tweetText,
           createdAt: tweetDate,
           metrics: {
-            likes: tweet.likes,
-            retweets: tweet.retweets,
-            replies: tweet.replies
+            likes: likes,
+            retweets: retweets,
+            replies: tweet.replies || 0
           },
           media: media,
-          isRetweet: tweet.isRetweet,
-          isReply: tweet.isReply,
+          isRetweet: !!tweet.isRetweet,
+          isReply: !!tweet.isReply,
           hasLinks: extractedUrls.length > 0,
           extractedUrls: extractedUrls
         };
@@ -144,23 +157,6 @@ export class TwitterClient {
   }
 
   /**
-   * Maps Twitter media types to standardized types
-   */
-  private getMediaType(type: string): 'image' | 'video' | 'link' | 'poll' {
-    switch (type.toLowerCase()) {
-      case 'photo':
-        return 'image';
-      case 'video':
-      case 'animated_gif':
-        return 'video';
-      case 'poll':
-        return 'poll';
-      default:
-        return 'link';
-    }
-  }
-
-  /**
    * Get a specific tweet by ID with all data
    */
   async getTweetById(tweetId: string): Promise<ProcessedTweet | null> {
@@ -172,35 +168,33 @@ export class TwitterClient {
 
       // Extract URLs from tweet content
       const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const extractedUrls = tweet.text.match(urlRegex) || [];
+      const tweetText = tweet.text || '';
+      const extractedUrls = tweetText.match(urlRegex) || [];
 
       // Process media items
-      const media = tweet.media?.map(item => {
-        const mediaType = this.getMediaType(item.type);
-        return {
-          type: mediaType,
-          url: item.url
-        };
-      });
+      const media = tweet.photos?.map(photo => ({
+        type: 'image' as const,
+        url: photo.url
+      })) || [];
 
       // Create standardized tweet object
       return {
-        id: tweet.id,
-        url: `https://twitter.com/${tweet.username}/status/${tweet.id}`,
+        id: tweet.id || '',
+        url: tweet.permanentUrl || `https://twitter.com/i/status/${tweet.id || ''}`,
         author: {
-          username: tweet.username,
-          displayName: tweet.name || tweet.username
+          username: tweet.userId || '',
+          displayName: tweet.name || tweet.userId || ''
         },
-        content: tweet.text,
-        createdAt: new Date(tweet.date),
+        content: tweetText,
+        createdAt: tweet.timeParsed || (tweet.timestamp ? new Date(tweet.timestamp) : new Date()),
         metrics: {
-          likes: tweet.likes,
-          retweets: tweet.retweets,
-          replies: tweet.replies
+          likes: tweet.likes || 0,
+          retweets: tweet.retweets || 0,
+          replies: tweet.replies || 0
         },
         media: media,
-        isRetweet: tweet.isRetweet,
-        isReply: tweet.isReply,
+        isRetweet: !!tweet.isRetweet,
+        isReply: !!tweet.isReply,
         hasLinks: extractedUrls.length > 0,
         extractedUrls: extractedUrls
       };

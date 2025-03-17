@@ -22,7 +22,7 @@ export const config = {
   // OpenAI config
   openai: {
     apiKey: process.env.OPENAI_API_KEY || '',
-    model: 'gpt-4-turbo', // Default model
+    model: 'gpt-4o', // Default model
   },
   
   // Tweet collection config
